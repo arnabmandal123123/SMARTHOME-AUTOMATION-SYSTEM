@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<!-- The theme will be set automatically by the script in the head -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Automation Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
+    <script>
+        // This script checks the user's system preference and applies the dark/light theme on load to prevent flashing.
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* light mode bg */
+        }
+        .dark body {
+             background-color: #0f172a; /* dark mode bg */
+        }
+        
+        /* Custom styles for the animated toggle switch */
+        .toggle-checkbox:checked {
+            transform: translateX(100%);
+            border-color: #4f46e5; /* indigo-600 */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4f46e5;
+        }
+
+        /* Glowing effect for the bulb icon when it's on */
+        .dark .bulb-on {
+            color: #facc15; /* yellow-400 */
+            filter: drop-shadow(0 0 8px #facc15) drop-shadow(0 0 16px #fde047);
+        }
+        .bulb-on {
+             color: #f59e0b; /* amber-500 */
+        }
+
+        /* Custom styling for inputs */
+        .dark input[type="time"], .dark input[type="text"], .dark input[type="email"], .dark textarea {
+            background-color: #374151;
+            color: #f3f4f6;
+            border-color: #4b5563;
+        }
+        .dark input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+
+        /* Drawer styles */
+        .drawer-backdrop {
+            background: rgba(0,0,0,0.4);
+        }
+        .drawer {
+            transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+        }
+        .drawer-closed {
+            transform: translateX(-100%);
+        }
+        .drawer-open {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="dark:bg-slate-900 bg-slate-50 transition-colors duration-300">
+
+    <!-- Drawer Backdrop -->
+    <div id="drawer-backdrop" class="fixed inset-0 z-40 drawer-backdrop hidden"></div>
+    
+    <!-- Drawer Menu -->
+    <aside id="drawer" class="fixed top-0 left-0 h-full w-80 bg-white dark:bg-slate-800 shadow-2xl z-50 drawer drawer-closed flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <span class="text-lg font-bold text-indigo-700 dark:text-indigo-300">Menu</span>
+            <button id="drawer-close" class="text-gray-500 hover:text-indigo-600 text-2xl">&times;</button>
+        </div>
+        <div class="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+            <!-- About Section -->
+            <section class="pb-4 border-b dark:border-gray-700">
+                <h3 class="font-semibold text-gray-700 dark:text-gray-200 mb-2">About</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    <b>Smart Home Automation</b><br>
+                    <span class="block mt-1">Developed by: <span class="font-medium">Arnab Mandal</span></span>
+                </p>
+            </section>
+            <!-- Feedback Form -->
+            <section>
+                <h3 class="font-semibold text-gray-700 dark:text-gray-200 mb-2">Feedback / Query</h3>
+                <form id="feedback-form" class="space-y-2">
+                    <input id="feedback-email" type="email" required placeholder="Your Email" class="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                    <textarea id="feedback-message" required placeholder="Your message..." class="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"></textarea>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2 rounded hover:bg-indigo-700 transition">Send</button>
+                </form>
+                <p id="feedback-success" class="text-green-600 text-xs mt-2 hidden">Feedback sent! Thank you.</p>
+            </section>
+        </div>
+    </aside>
+
+    <!-- Menu Drawer Button -->
+    <button id="drawer-open" class="fixed top-6 left-6 z-30 bg-white dark:bg-slate-700 rounded-full shadow-lg p-2 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
+        <svg class="w-6 h-6 text-indigo-700 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </button>
+
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="w-full max-w-md mx-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6">
+
+            <div class="text-center">
+                <h1 id="appliance-name" class="text-3xl font-bold text-gray-800 dark:text-gray-100">Smart Light Control</h1>
+                <p id="connection-status" class="text-sm text-red-500 font-medium mt-2">Connecting to MQTT Broker...</p>
+            </div>
+
+            <!-- Voice Control Section -->
+            <div class="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-4 flex flex-col items-center shadow-inner">
+                 <div class="flex items-center mb-2">
+                     <svg class="w-6 h-6 text-indigo-600 dark:text-indigo-300 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                     <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200">Voice Control</h2>
+                 </div>
+                 <button id="voice-btn" class="mb-2 flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
+                     <span id="voice-btn-text">Start Listening</span>
+                 </button>
+                 <div id="voice-status" class="text-xs text-gray-500 dark:text-gray-300 h-4"></div>
+            </div>
+
+            <!-- Light Control Cards Container -->
+            <div id="light-card-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Light Cards will be generated by JS -->
+            </div>
+
+            <!-- Automatic Task Timer -->
+            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-6">
+                <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Automatic Timer (All Lights)</h2>
+                <div id="active-timer-display" class="hidden bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 p-3 rounded-lg mb-4 flex justify-between items-center">
+                    <div>
+                        <p class="font-semibold">Active Timer</p>
+                        <p id="active-timer-text" class="text-sm"></p>
+                    </div>
+                    <button id="clear-timer-btn" class="text-sm font-semibold text-red-600 dark:text-red-400 hover:underline">Clear</button>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="on-time" class="block text-sm font-medium text-gray-600 dark:text-gray-400">Turn ON Time</label>
+                        <input type="time" id="on-time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="off-time" class="block text-sm font-medium text-gray-600 dark:text-gray-400">Turn OFF Time</label>
+                        <input type="time" id="off-time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                </div>
+                <button id="set-timer-btn" class="mt-4 w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 dark:focus:ring-offset-slate-800 focus:ring-indigo-500 transition-all duration-200">
+                    Set Automatic Task
+                </button>
+            </div>
+            
+            <!-- Activity Log -->
+            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-6">
+                <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Activity Log</h2>
+                <div id="log-container" class="h-40 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const NUM_LIGHTS = 4;
+            const lightCardContainer = document.getElementById('light-card-container');
+
+            // --- Dynamically Create Light Cards ---
+            for (let i = 1; i <= NUM_LIGHTS; i++) {
+                const cardHTML = `
+                <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 text-center transition-all duration-300">
+                    <div id="name-container-${i}" class="flex items-center justify-center gap-2 mb-2">
+                         <h2 id="appliance-name-${i}" class="text-lg font-bold text-gray-800 dark:text-gray-100">Light ${i}</h2>
+                         <button class="edit-name-btn text-gray-400 hover:text-indigo-500" data-light-num="${i}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+                         </button>
+                    </div>
+                    <div class="mb-4">
+                        <svg id="bulb-icon-${i}" class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 transition-all duration-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a7 7 0 014.243 12.757A1 1 0 0114 18H6a1 1 0 01-.243-1.975A7 7 0 0110 4V3a1 1 0 01-1-1zM10 16a3 3 0 100-6 3 3 0 000 6z" /><path d="M9 20a1 1 0 011-1h0a1 1 0 011 1v1a1 1 0 01-2 0v-1z" /></svg>
+                    </div>
+                    <div class="relative inline-block w-16 h-8 align-middle select-none">
+                        <input type="checkbox" id="light-toggle-${i}" data-light-num="${i}" class="toggle-checkbox absolute block w-8 h-8 rounded-full bg-white border-2 border-gray-300 appearance-none cursor-pointer transition-transform duration-300 ease-in-out"/>
+                        <label for="light-toggle-${i}" class="toggle-label block overflow-hidden h-8 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300 ease-in-out"></label>
+                    </div>
+                    <p id="light-status-${i}" class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-3">Status: Unknown</p>
+                </div>`;
+                lightCardContainer.insertAdjacentHTML('beforeend', cardHTML);
+            }
+
+            // --- MQTT Configuration ---
+            const brokerHost = "test.mosquitto.org";
+            const brokerPort = 8081;
+            const clientId = "WebAppClient_" + new Date().getTime();
+            const light_status_topic_wildcard = "homeautomation/project/light/+/status";
+            const light_log_topic = "homeautomation/project/light/log";
+            const light_timer_set_topic = "homeautomation/project/light/setTimer";
+            const light_timer_clear_topic = "homeautomation/project/light/clearTimer";
+
+            // --- UI Elements ---
+            const connectionStatusEl = document.getElementById('connection-status');
+            const logContainerEl = document.getElementById('log-container');
+            const setTimerBtn = document.getElementById('set-timer-btn');
+            const onTimeInput = document.getElementById('on-time');
+            const offTimeInput = document.getElementById('off-time');
+            const activeTimerDisplay = document.getElementById('active-timer-display');
+            const activeTimerText = document.getElementById('active-timer-text');
+            const clearTimerBtn = document.getElementById('clear-timer-btn');
+            const drawer = document.getElementById('drawer');
+            const drawerBackdrop = document.getElementById('drawer-backdrop');
+            const drawerOpen = document.getElementById('drawer-open');
+            const drawerClose = document.getElementById('drawer-close');
+            const voiceBtn = document.getElementById('voice-btn');
+            const voiceBtnText = document.getElementById('voice-btn-text');
+            const voiceStatus = document.getElementById('voice-status');
+
+            // --- MQTT Client Setup ---
+            const client = new Paho.Client(brokerHost, brokerPort, clientId);
+            client.onConnectionLost = onConnectionLost;
+            client.onMessageArrived = onMessageArrived;
+            client.connect({
+                timeout: 3,
+                useSSL: true,
+                onSuccess: onConnect,
+                onFailure: onFailure,
+            });
+
+            // --- MQTT Functions ---
+            function onConnect() {
+                connectionStatusEl.textContent = "Connected to MQTT Broker";
+                connectionStatusEl.classList.replace('text-red-500', 'text-green-500');
+                client.subscribe(light_status_topic_wildcard);
+                client.subscribe(light_log_topic);
+                addLog("Web UI connected. Requesting initial status...");
+                for (let i = 1; i <= NUM_LIGHTS; i++) {
+                    publishMessage(`homeautomation/project/light/${i}/getStatus`, "GET");
+                }
+            }
+
+            function onFailure(message) {
+                console.error("Connection failed: " + message.errorMessage);
+                connectionStatusEl.textContent = "Connection Failed. Refresh to try again.";
+            }
+
+            function onConnectionLost(responseObject) {
+                if (responseObject.errorCode !== 0) {
+                    console.error("Connection lost: " + responseObject.errorMessage);
+                    connectionStatusEl.textContent = "Connection Lost. Please refresh.";
+                    connectionStatusEl.classList.replace('text-green-500', 'text-red-500');
+                }
+            }
+
+            function onMessageArrived(message) {
+                const topic = message.destinationName;
+                const payload = message.payloadString;
+                if (topic === light_log_topic) {
+                    addLog(payload);
+                } else if (topic.startsWith("homeautomation/project/light/") && topic.endsWith("/status")) {
+                    const topicParts = topic.split('/');
+                    const lightNumber = parseInt(topicParts[3]);
+                    if (!isNaN(lightNumber)) {
+                        updateLightUI(lightNumber, payload);
+                    }
+                }
+            }
+
+            function publishMessage(topic, payload) {
+                if (!client.isConnected()) {
+                    addLog("Cannot publish. Not connected to broker.");
+                    return;
+                }
+                const message = new Paho.Message(payload);
+                message.destinationName = topic;
+                client.send(message);
+            }
+
+            // --- UI Logic ---
+            function updateLightUI(lightNumber, status) {
+                const lightToggleEl = document.getElementById(`light-toggle-${lightNumber}`);
+                const lightStatusEl = document.getElementById(`light-status-${lightNumber}`);
+                const bulbIconEl = document.getElementById(`bulb-icon-${lightNumber}`);
+                if (!lightToggleEl || !lightStatusEl || !bulbIconEl) return;
+                const isON = (status === "ON");
+                lightToggleEl.checked = isON;
+                lightStatusEl.textContent = `Status: ${status}`;
+                isON ? bulbIconEl.classList.add('bulb-on') : bulbIconEl.classList.remove('bulb-on');
+            }
+
+            function addLog(logText) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                const sanitizedText = logText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                logEntry.innerHTML = `<span class="text-cyan-600 dark:text-cyan-400">[${timestamp}]</span> > ${sanitizedText}`;
+                logContainerEl.appendChild(logEntry);
+                logContainerEl.scrollTop = logContainerEl.scrollHeight;
+            }
+
+            // --- Timer Logic ---
+            function displayActiveTimer(onTime, offTime) {
+                const formatTime = (time) => new Date('1970-01-01T' + time).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true});
+                activeTimerText.textContent = `ON: ${formatTime(onTime)} - OFF: ${formatTime(offTime)}`;
+                activeTimerDisplay.classList.remove('hidden');
+            }
+
+            function hideActiveTimer() {
+                activeTimerDisplay.classList.add('hidden');
+            }
+             
+            // --- Speech Synthesis ---
+            function speak(text) {
+                if ('speechSynthesis' in window) {
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = 'en-US';
+                    window.speechSynthesis.speak(utter);
+                }
+            }
+
+            // --- Voice Control Logic ---
+            let recognition, recognizing = false;
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.lang = 'en-US';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+
+                recognition.onstart = () => {
+                    recognizing = true;
+                    voiceBtnText.textContent = "Listening...";
+                    voiceStatus.textContent = "Say a command...";
+                };
+
+                recognition.onerror = (event) => {
+                    voiceStatus.textContent = "Error: " + event.error;
+                };
+
+                recognition.onend = () => {
+                    recognizing = false;
+                    voiceBtnText.textContent = "Start Listening";
+                    setTimeout(() => { if (!recognizing) voiceStatus.textContent = "" }, 2000);
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript.trim().toLowerCase();
+                    voiceStatus.textContent = `Heard: "${transcript}"`;
+                    
+                    if (transcript.includes("turn on all lights")) {
+                        for (let i = 1; i <= NUM_LIGHTS; i++) publishMessage(`homeautomation/project/light/${i}/set`, "ON");
+                        addLog("Voice: Turn ON all lights");
+                        speak("Turning on all lights");
+                        return;
+                    } 
+                    if (transcript.includes("turn off all lights")) {
+                        for (let i = 1; i <= NUM_LIGHTS; i++) publishMessage(`homeautomation/project/light/${i}/set`, "OFF");
+                        addLog("Voice: Turn OFF all lights");
+                        speak("Turning off all lights");
+                        return;
+                    }
+
+                    const stateMatch = transcript.match(/turn (on|off)/);
+                    if (stateMatch) {
+                        const state = stateMatch[1]; // "on" or "off"
+                        for (let i = 1; i <= NUM_LIGHTS; i++) {
+                            const customName = document.getElementById(`appliance-name-${i}`).textContent.toLowerCase();
+                            const defaultName = `light ${i}`;
+                            if (transcript.includes(customName) || transcript.includes(defaultName)) {
+                                publishMessage(`homeautomation/project/light/${i}/set`, state.toUpperCase());
+                                addLog(`Voice: Turn ${state.toUpperCase()} ${customName}`);
+                                speak(`Turning ${state} ${customName}`);
+                                return; 
+                            }
+                        }
+                    }
+                    voiceStatus.textContent = `Unrecognized command.`;
+                };
+
+                voiceBtn.addEventListener('click', () => {
+                    if (recognizing) {
+                        recognition.stop();
+                    } else {
+                        recognition.start();
+                    }
+                });
+            } else {
+                voiceBtn.disabled = true;
+                voiceBtnText.textContent = "Not Supported";
+                voiceStatus.textContent = "Voice recognition not supported in this browser.";
+            }
+
+            // --- Name Editing Logic ---
+            function enableNameEditing(lightNum) {
+                const nameContainer = document.getElementById(`name-container-${lightNum}`);
+                const nameEl = document.getElementById(`appliance-name-${lightNum}`);
+                const currentName = nameEl.textContent;
+                
+                nameContainer.innerHTML = `
+                    <input type="text" value="${currentName}" class="inline-name-input text-center text-lg font-bold bg-transparent border-b-2 border-indigo-400 focus:outline-none w-32 text-gray-800 dark:text-gray-100">
+                    <button class="save-name-btn text-green-500 hover:text-green-400" data-light-num="${lightNum}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </button>`;
+
+                const inputEl = nameContainer.querySelector('.inline-name-input');
+                inputEl.focus();
+                inputEl.select();
+                
+                const saveHandler = () => saveName(lightNum);
+                nameContainer.querySelector('.save-name-btn').addEventListener('click', saveHandler);
+                inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveHandler(); }});
+                inputEl.addEventListener('blur', saveHandler); // Save when input loses focus
+            }
+
+            function saveName(lightNum) {
+                const nameContainer = document.getElementById(`name-container-${lightNum}`);
+                const inputEl = nameContainer.querySelector('.inline-name-input');
+                // If the input doesn't exist, it means the name was already saved.
+                if(!inputEl) return;
+
+                const newName = inputEl.value.trim();
+                
+                if (newName) {
+                    localStorage.setItem(`lightName${lightNum}`, newName);
+                    nameContainer.innerHTML = `
+                        <h2 id="appliance-name-${lightNum}" class="text-lg font-bold text-gray-800 dark:text-gray-100">${newName}</h2>
+                        <button class="edit-name-btn text-gray-400 hover:text-indigo-500" data-light-num="${lightNum}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+                        </button>`;
+                }
+            }
+
+            function loadLightNames() {
+                for (let i = 1; i <= NUM_LIGHTS; i++) {
+                    const savedName = localStorage.getItem(`lightName${i}`);
+                    if (savedName) {
+                        document.getElementById(`appliance-name-${i}`).textContent = savedName;
+                    }
+                }
+            }
+
+            // --- Event Listeners ---
+            document.querySelectorAll('.toggle-checkbox').forEach(toggle => {
+                toggle.addEventListener('change', (event) => {
+                    const lightNum = event.target.dataset.lightNum;
+                    const state = event.target.checked ? "ON" : "OFF";
+                    publishMessage(`homeautomation/project/light/${lightNum}/set`, state);
+                });
+            });
+
+            lightCardContainer.addEventListener('click', function(event) {
+                const editBtn = event.target.closest('.edit-name-btn');
+                if (editBtn) {
+                    enableNameEditing(editBtn.dataset.lightNum);
+                }
+            });
+            
+            setTimerBtn.addEventListener('click', () => {
+                const onTime = onTimeInput.value;
+                const offTime = offTimeInput.value;
+                if (!onTime || !offTime) {
+                    alert("Please select both ON and OFF times.");
+                    return;
+                }
+                const timerPayload = JSON.stringify({ on: onTime, off: offTime });
+                publishMessage(light_timer_set_topic, timerPayload);
+                addLog(`Setting timer: ON at ${onTime}, OFF at ${offTime}.`);
+                localStorage.setItem('lightTimer', timerPayload);
+                displayActiveTimer(onTime, offTime);
+            });
+
+            clearTimerBtn.addEventListener('click', () => {
+                publishMessage(light_timer_clear_topic, "CLEAR");
+                localStorage.removeItem('lightTimer');
+                hideActiveTimer();
+                addLog("Active timer has been cleared.");
+            });
+
+            drawerOpen.onclick = () => {
+                drawer.classList.replace('drawer-closed', 'drawer-open');
+                drawerBackdrop.classList.remove('hidden');
+            };
+            const closeDrawer = () => {
+                drawer.classList.replace('drawer-open', 'drawer-closed');
+                drawerBackdrop.classList.add('hidden');
+            };
+            drawerClose.onclick = closeDrawer;
+            drawerBackdrop.onclick = closeDrawer;
+
+            document.getElementById('feedback-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                document.getElementById('feedback-success').classList.remove('hidden');
+                setTimeout(() => document.getElementById('feedback-success').classList.add('hidden'), 3000);
+                e.target.reset();
+            });
+
+            // --- Initial Load ---
+            loadLightNames();
+            const savedTimer = localStorage.getItem('lightTimer');
+            if (savedTimer) {
+                const { on, off } = JSON.parse(savedTimer);
+                onTimeInput.value = on;
+                offTimeInput.value = off;
+                displayActiveTimer(on, off);
+            }
+        });
+    </script>
+</body>
+</html>
+
