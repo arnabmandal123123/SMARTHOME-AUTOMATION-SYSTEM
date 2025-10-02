@@ -125,7 +125,6 @@
                      <span id="voice-btn-text">Start Listening</span>
                  </button>
                  <div id="voice-status" class="text-xs text-gray-500 dark:text-gray-300 h-4"></div>
-
                  <!-- Instructions Toggle -->
                  <div class="w-full mt-2 border-t border-indigo-200 dark:border-indigo-700/50 pt-2">
                      <button id="instructions-toggle" class="flex items-center justify-between w-full text-sm font-medium text-indigo-700 dark:text-indigo-300">
@@ -219,6 +218,10 @@
             const brokerHost = "test.mosquitto.org";
             const brokerPort = 8081;
             const clientId = "WebAppClient_" + new Date().getTime();
+            // --- TOPICS FOR SYNCING STATE ---
+            const light_name_topic_wildcard = "homeautomation/project/light/+/name";
+            const light_config_timer_topic = "homeautomation/project/config/timer";
+            // --- TOPICS FOR FUNCTIONALITY ---
             const light_status_topic_wildcard = "homeautomation/project/light/+/status";
             const light_log_topic = "homeautomation/project/light/log";
             const light_timer_set_topic = "homeautomation/project/light/setTimer";
@@ -244,7 +247,6 @@
             const voiceInstructions = document.getElementById('voice-instructions');
             const instructionChevron = document.getElementById('instruction-chevron');
 
-
             // --- MQTT Client Setup ---
             const client = new Paho.Client(brokerHost, brokerPort, clientId);
             client.onConnectionLost = onConnectionLost;
@@ -260,11 +262,16 @@
             function onConnect() {
                 connectionStatusEl.textContent = "Connected to MQTT Broker";
                 connectionStatusEl.classList.replace('text-red-500', 'text-green-500');
+                // Subscribe to all functional topics
                 client.subscribe(light_status_topic_wildcard);
                 client.subscribe(light_log_topic);
+                // --- SUBSCRIBE TO STATE TOPICS TO SYNC ---
+                client.subscribe(light_name_topic_wildcard);
+                client.subscribe(light_config_timer_topic);
+
                 addLog("Web UI connected. Requesting initial status...");
                 for (let i = 1; i <= NUM_LIGHTS; i++) {
-                    publishMessage(`homeautomation/project/light/${i}/getStatus`, "GET");
+                    publishMessage(`homeautomation/project/light/${i}/getStatus`, "GET", false); // Don't retain status requests
                 }
             }
 
@@ -284,24 +291,44 @@
             function onMessageArrived(message) {
                 const topic = message.destinationName;
                 const payload = message.payloadString;
+
                 if (topic === light_log_topic) {
                     addLog(payload);
-                } else if (topic.startsWith("homeautomation/project/light/") && topic.endsWith("/status")) {
+                } 
+                // Handle status updates
+                else if (topic.includes("/status")) {
                     const topicParts = topic.split('/');
                     const lightNumber = parseInt(topicParts[3]);
-                    if (!isNaN(lightNumber)) {
-                        updateLightUI(lightNumber, payload);
+                    if (!isNaN(lightNumber)) updateLightUI(lightNumber, payload);
+                }
+                // --- HANDLE INCOMING STATE SYNC MESSAGES ---
+                else if (topic.includes("/name")) {
+                    const topicParts = topic.split('/');
+                    const lightNumber = parseInt(topicParts[3]);
+                    if (!isNaN(lightNumber) && payload) {
+                        document.getElementById(`appliance-name-${lightNumber}`).textContent = payload;
+                    }
+                }
+                else if (topic === light_config_timer_topic) {
+                    if (payload) { // If payload is not empty, set timer
+                        const { on, off } = JSON.parse(payload);
+                        onTimeInput.value = on;
+                        offTimeInput.value = off;
+                        displayActiveTimer(on, off);
+                    } else { // If payload is empty, clear timer
+                        hideActiveTimer();
                     }
                 }
             }
 
-            function publishMessage(topic, payload) {
+            function publishMessage(topic, payload, retained = false) {
                 if (!client.isConnected()) {
                     addLog("Cannot publish. Not connected to broker.");
                     return;
                 }
                 const message = new Paho.Message(payload);
                 message.destinationName = topic;
+                message.retained = retained; // Set the retained flag
                 client.send(message);
             }
 
@@ -335,6 +362,8 @@
 
             function hideActiveTimer() {
                 activeTimerDisplay.classList.add('hidden');
+                onTimeInput.value = '';
+                offTimeInput.value = '';
             }
              
             // --- Speech Synthesis ---
@@ -438,42 +467,35 @@
                 const saveHandler = () => saveName(lightNum);
                 nameContainer.querySelector('.save-name-btn').addEventListener('click', saveHandler);
                 inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveHandler(); }});
-                inputEl.addEventListener('blur', saveHandler); // Save when input loses focus
+                inputEl.addEventListener('blur', saveHandler);
             }
 
             function saveName(lightNum) {
                 const nameContainer = document.getElementById(`name-container-${lightNum}`);
                 const inputEl = nameContainer.querySelector('.inline-name-input');
-                // If the input doesn't exist, it means the name was already saved.
                 if(!inputEl) return;
 
                 const newName = inputEl.value.trim();
                 
                 if (newName) {
-                    localStorage.setItem(`lightName${lightNum}`, newName);
-                    nameContainer.innerHTML = `
-                        <h2 id="appliance-name-${lightNum}" class="text-lg font-bold text-gray-800 dark:text-gray-100">${newName}</h2>
-                        <button class="edit-name-btn text-gray-400 hover:text-indigo-500" data-light-num="${lightNum}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
-                        </button>`;
+                    // --- PUBLISH NAME TO MQTT BROKER ---
+                    publishMessage(`homeautomation/project/light/${lightNum}/name`, newName, true); // Retained
                 }
+                // The UI will update automatically when the retained message is received back from the broker.
+                // This ensures all clients are in sync. We'll just restore the original UI structure for now.
+                nameContainer.innerHTML = `
+                    <h2 id="appliance-name-${lightNum}" class="text-lg font-bold text-gray-800 dark:text-gray-100">${newName || `Light ${lightNum}`}</h2>
+                    <button class="edit-name-btn text-gray-400 hover:text-indigo-500" data-light-num="${lightNum}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+                    </button>`;
             }
-
-            function loadLightNames() {
-                for (let i = 1; i <= NUM_LIGHTS; i++) {
-                    const savedName = localStorage.getItem(`lightName${i}`);
-                    if (savedName) {
-                        document.getElementById(`appliance-name-${i}`).textContent = savedName;
-                    }
-                }
-            }
-
+            
             // --- Event Listeners ---
             document.querySelectorAll('.toggle-checkbox').forEach(toggle => {
                 toggle.addEventListener('change', (event) => {
                     const lightNum = event.target.dataset.lightNum;
                     const state = event.target.checked ? "ON" : "OFF";
-                    publishMessage(`homeautomation/project/light/${lightNum}/set`, state);
+                    publishMessage(`homeautomation/project/light/${lightNum}/set`, state, false);
                 });
             });
 
@@ -492,16 +514,18 @@
                     return;
                 }
                 const timerPayload = JSON.stringify({ on: onTime, off: offTime });
-                publishMessage(light_timer_set_topic, timerPayload);
+                // Publish to the config topic for other UIs to sync
+                publishMessage(light_config_timer_topic, timerPayload, true);
+                // Also publish to the functional topic for the ESP to act on
+                publishMessage(light_timer_set_topic, timerPayload, false);
                 addLog(`Setting timer: ON at ${onTime}, OFF at ${offTime}.`);
-                localStorage.setItem('lightTimer', timerPayload);
-                displayActiveTimer(onTime, offTime);
             });
 
             clearTimerBtn.addEventListener('click', () => {
-                publishMessage(light_timer_clear_topic, "CLEAR");
-                localStorage.removeItem('lightTimer');
-                hideActiveTimer();
+                // Publish an empty payload to the config topic to clear the retained message
+                publishMessage(light_config_timer_topic, "", true); 
+                // Publish the functional clear command to the ESP
+                publishMessage(light_timer_clear_topic, "CLEAR", false);
                 addLog("Active timer has been cleared.");
             });
 
@@ -544,19 +568,8 @@
                     instructionChevron.classList.remove('rotate-180');
                 }
             });
-
-            // --- Initial Load ---
-            loadLightNames();
-            const savedTimer = localStorage.getItem('lightTimer');
-            if (savedTimer) {
-                const { on, off } = JSON.parse(savedTimer);
-                onTimeInput.value = on;
-                offTimeInput.value = off;
-                displayActiveTimer(on, off);
-            }
         });
     </script>
 </body>
 </html>
-
 
