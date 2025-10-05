@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<!-- The theme will be set automatically by the script in the head -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Automation Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
+    <script>
+        // This script checks the user's system preference and applies the dark/light theme on load to prevent flashing.
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+    </script>
+    <style>
+        /* Theme toggle button styling */
+        .theme-btn.active {
+            background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
+            color: #fff !important;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb; /* Use a cleaner, more neutral light gray (gray-50) */
+            color: #22223b;
+        }
+        .dark body {
+            background-color: #0f172a; /* Tailwind slate-900 */
+            color: #e0e7ef;
+        }
+
+        /* Card styling */
+        .card {
+            background-color: #ffffff; /* Solid white for a cleaner look */
+            border-radius: 1.25rem;
+            box-shadow: 0 8px 16px -4px rgba(149, 157, 165, 0.1), 0 0 4px 0 rgba(149, 157, 165, 0.05); /* Softer, more modern shadow */
+            border: 1px solid #f3f4f6; /* Lighter border (gray-100) */
+            transition: box-shadow 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 10px 20px -5px rgba(149, 157, 165, 0.15), 0 0 4px 0 rgba(149, 157, 165, 0.05);
+        }
+        .dark .card {
+            background: linear-gradient(135deg, #1e293b 80%, #334155 100%);
+            border: 1px solid #334155;
+        }
+
+        /* Button styling */
+        .btn {
+            background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
+            color: #fff;
+            border-radius: 0.75rem;
+            padding: 0.5rem 1.25rem;
+            font-weight: 600;
+            box-shadow: 0 2px 8px 0 rgba(79,70,229,0.10);
+            border: none;
+            transition: all 0.2s cubic-bezier(.4,0,.2,1);
+        }
+        .btn:hover, .btn:focus {
+            background: linear-gradient(90deg, #4f46e5 0%, #6366f1 100%);
+            box-shadow: 0 4px 16px 0 rgba(79,70,229,0.18);
+            transform: translateY(-2px);
+        }
+        .btn:active {
+            transform: translateY(0px) scale(0.98);
+            box-shadow: 0 2px 8px 0 rgba(79,70,229,0.10);
+        }
+        .btn:disabled {
+            transform: translateY(0);
+            background: #a5b4fc;
+            cursor: not-allowed;
+        }
+        .dark .btn {
+            background: linear-gradient(90deg, #6366f1 0%, #818cf8 100%);
+            color: #f3f4f6;
+        }
+
+        /* Input styling */
+        input[type="time"], input[type="text"], input[type="email"], textarea, select {
+            background: #f8fafc;
+            border-radius: 0.5rem;
+            border: 1px solid #cbd5e1;
+            font-size: 1rem;
+            color: #22223b;
+            transition: border-color 0.2s;
+        }
+        input[type="time"]:focus, input[type="text"]:focus, input[type="email"]:focus, textarea:focus, select:focus {
+            border-color: #4f46e5;
+            outline: none;
+        }
+        .dark input[type="time"], .dark input[type="text"], .dark input[type="email"], .dark textarea, .dark select {
+            background-color: #23293a;
+            color: #e0e7ef;
+            border-color: #334155;
+        }
+        .dark input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+
+        /* New Toggle Switch Styling */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 32px;
+            cursor: pointer;
+        }
+        .toggle-checkbox { /* This is the hidden input */
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-track {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0; 
+            background-color: #cbd5e1;
+            border-radius: 16px;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .dark .toggle-track {
+            background-color: #475569;
+        }
+        .toggle-thumb {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 24px;
+            height: 24px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s ease-in-out;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .toggle-checkbox:checked + .toggle-track {
+            background-color: #4ade80; /* Use a clear green for 'ON' state */
+        }
+        .dark .toggle-checkbox:checked + .toggle-track {
+            background-color: #818cf8;
+        }
+        .toggle-checkbox:checked ~ .toggle-thumb {
+            transform: translateX(20px);
+        }
+
+        /* Appliance Icon Styling */
+        .appliance-icon {
+            color: #94a3b8;
+            transition: color 0.3s, filter 0.3s, transform 0.3s;
+        }
+        .dark .appliance-icon {
+            color: #64748b;
+        }
+        .icon-on[data-type="light"] .appliance-icon,
+        .icon-on[data-type="other"] .appliance-icon {
+            color: #f59e0b;
+            filter: drop-shadow(0 0 5px #f59e0b);
+        }
+        .dark .icon-on[data-type="light"] .appliance-icon,
+        .dark .icon-on[data-type="other"] .appliance-icon {
+            color: #facc15;
+            filter: drop-shadow(0 0 8px #facc15);
+        }
+        .icon-on[data-type="fan"] .appliance-icon {
+            color: #38bdf8; /* sky-400 */
+            filter: drop-shadow(0 0 8px #38bdf8) drop-shadow(0 0 12px #38bdf8);
+            animation: spin 1s linear infinite;
+        }
+        .dark .icon-on[data-type="fan"] .appliance-icon {
+            color: #7dd3fc; /* sky-300 */
+            filter: drop-shadow(0 0 10px #7dd3fc) drop-shadow(0 0 15px #7dd3fc);
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* New Card State Styles for ON/Pending states */
+        .card-on {
+            border-color: rgba(245, 158, 11, 0.8); /* amber-500 */
+            box-shadow: 0 0 15px 0 rgba(245, 158, 11, 0.4), 0 12px 40px 0 rgba(60,72,88,0.18);
+        }
+        .dark .card-on {
+            border-color: rgba(250, 204, 21, 0.7); /* yellow-400 */
+            box-shadow: 0 0 20px 0 rgba(250, 204, 21, 0.3), 0 12px 40px 0 rgba(30,41,59,0.18);
+        }
+        .card-pending {
+            animation: pulse-border 1s infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: #6366f1; } /* indigo-500 */
+            50% { border-color: #a5b4fc; } /* indigo-300 */
+        }
+
+        /* Drawer styles */
+        .drawer-backdrop {
+            background: rgba(0,0,0,0.4);
+        }
+        .drawer {
+            transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+        }
+        .drawer-closed {
+            transform: translateX(-100%);
+        }
+        .drawer-open {
+            transform: translateX(0);
+        }
+
+        /* Accordion Styles */
+        .accordion-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 0.75rem 0.5rem;
+            font-weight: 600;
+            color: #4338ca; /* indigo-700 */
+            background-color: #eef2ff; /* indigo-50 */
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        .dark .accordion-toggle {
+            color: #a5b4fc; /* indigo-300 */
+            background-color: #3730a3; /* indigo-800 */
+        }
+        .accordion-toggle:hover {
+             background-color: #e0e7ff; /* indigo-100 */
+             transform: translateY(-1px);
+        }
+        .accordion-toggle:active {
+            transform: translateY(0) scale(0.99);
+        }
+        .dark .accordion-toggle:hover {
+             background-color: #4338ca; /* indigo-700 */
+        }
+        .accordion-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+            max-height: 0;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        /* New class for small icon buttons */
+        .icon-btn {
+            transition: all 0.15s ease-in-out;
+            padding: 0.25rem;
+            border-radius: 9999px;
+        }
+        .icon-btn:hover {
+            transform: scale(1.1);
+            background-color: rgba(99, 102, 241, 0.1); /* indigo-500 with opacity */
+        }
+        .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Misc improvements */
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #4f46e5;
+        }
+        .dark .section-title {
+            color: #818cf8;
+        }
+        .activity-log {
+            font-size: 0.95rem;
+            color: #64748b;
+        }
+        .dark .activity-log {
+            color: #cbd5e1;
+        }
+        .shadow-inner {
+            box-shadow: 0 2px 8px 0 rgba(60,72,88,0.08);
+        }
+        .dark .shadow-inner {
+            box-shadow: 0 2px 8px 0 rgba(30,41,59,0.18);
+        }
+
+        /* Animation for login page */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+            opacity: 0;
+        }
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-300 { animation-delay: 0.3s; }
+        .delay-400 { animation-delay: 0.4s; }
+        @media (max-width: 640px) {
+            .card {
+                padding: 1rem;
+                border-radius: 1rem;
+            }
+            #drawer {
+                width: 90vw;
+                min-width: 0;
+            }
+        }
+    </style>
+</head>
+<body class="dark:bg-slate-900 bg-slate-50 transition-colors duration-300">
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-2 items-end pointer-events-none"></div>
+
+    <!-- Theme Toggle Switch -->
+    <div id="main-controls-header" class="fixed top-2 right-2 z-50 hidden">
+        <div class="flex items-center gap-1 bg-white dark:bg-slate-700 rounded-full shadow-lg p-1 border border-gray-200 dark:border-slate-600">
+            <button id="theme-light" title="Light" class="theme-btn w-7 h-7 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M12 1v2m0 18v2m11-11h-2M3 12H1m16.95 6.95l-1.41-1.41M6.46 6.46L5.05 5.05m12.02 0l-1.41 1.41M6.46 17.54l-1.41 1.41"/></svg>
+            </button>
+            <button id="theme-dark" title="Dark" class="theme-btn w-7 h-7 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/></svg>
+            </button>
+            <button id="theme-system" title="System" class="theme-btn w-7 h-7 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M8 8h8v8H8z"/></svg>
+            </button>
+            <div class="border-l border-gray-200 dark:border-slate-600 h-5 mx-1"></div>
+            <button id="logout-btn-main" title="Logout" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-800/50 transition">
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
+        </div>
+    </div>
+    <!-- Drawer Backdrop -->
+    <div id="drawer-backdrop" class="fixed inset-0 z-40 drawer-backdrop hidden"></div>
+    
+    <!-- Drawer Menu -->
+    <aside id="drawer" class="fixed top-0 left-0 h-full w-72 sm:w-80 bg-white dark:bg-slate-800 shadow-2xl z-50 drawer drawer-closed flex flex-col transition-all duration-300">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+            <span class="text-base font-bold text-indigo-700 dark:text-indigo-300">Menu</span>
+            <button id="drawer-close" class="icon-btn text-gray-500 hover:text-indigo-600 text-xl">&times;</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 space-y-2">
+            <!-- Section 1: Project Team Members -->
+            <div class="accordion-item">
+                <button class="accordion-toggle" data-accordion="team">
+                    <span>Project Team Members</span>
+                    <svg class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="accordion-content" id="accordion-team">
+                    <div class="pt-3 pb-2 space-y-4">
+                        <div class="flex items-center gap-3">
+                            <img src="piku.jpg" alt="Piku Mandal Profile" class="w-12 h-12 rounded-full border-2 border-indigo-500">
+                            <div>
+                                <h3 class="text-base font-bold text-indigo-700 dark:text-indigo-300">Piku Mandal</h3>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">B.Tech, Electrical Engineering</p>
+                                <div class="flex gap-2 mt-1 items-center flex-wrap">
+                                    <span class="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Gmail_Icon.png" alt="Gmail" class="w-4 h-4">
+                                        <span class="font-mono select-all text-xs">pikumandal5233@gmail.com</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <img src="arnab.jpg" alt="Arnab Mandal Profile" class="w-12 h-12 rounded-full border-2 border-indigo-500">
+                            <div>
+                                <h3 class="text-base font-bold text-indigo-700 dark:text-indigo-300">Arnab Mandal</h3>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">Diploma, Electrical Engineering</p>
+                                <span class="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 mt-1">
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Gmail_Icon.png" alt="Gmail" class="w-4 h-4">
+                                    <span class="font-mono select-all text-xs">arnabmandal123123@gmail.com</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Feedback -->
+            <div class="accordion-item">
+                <button class="accordion-toggle" data-accordion="feedback">
+                    <span>Feedback</span>
+                    <svg class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="accordion-content" id="accordion-feedback">
+                    <div class="pt-3 pb-2">
+                        <form id="feedback-form" class="space-y-2">
+                            <input id="feedback-email" type="email" required placeholder="Your Email" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                            <textarea id="feedback-message" required placeholder="Your message..." class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"></textarea>
+                            <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2 rounded hover:bg-indigo-700 transition">Compose Email</button>
+                        </form>
+                        <p id="feedback-success" class="text-green-600 text-xs mt-2 hidden">Opening email client...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Section 3: About -->
+             <div class="accordion-item">
+                <button class="accordion-toggle" data-accordion="about">
+                    <span>About</span>
+                    <svg class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="accordion-content" id="accordion-about">
+                    <div class="pt-3 pb-2 text-sm text-gray-700 dark:text-gray-300 space-y-4">
+                        <h3 class="font-bold text-base text-indigo-600 dark:text-indigo-400">About The Project</h3>
+                        <p>Welcome to the Smart Home Automation System, an innovative project dedicated to bringing convenient, web-controlled lighting and fan management into the modern home. As a two-member team of electrical engineers from Gkciet, we combined our academic expertise to design and implement a practical and cost-effective home automation solution.</p>
+
+                        <h4 class="font-semibold text-indigo-600 dark:text-indigo-400">Technology Stack</h4>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-slate-100 dark:bg-slate-700 p-2 rounded-md"><p class="font-semibold">Hardware</p><p>ESP8266, LEDs</p></div>
+                            <div class="bg-slate-100 dark:bg-slate-700 p-2 rounded-md"><p class="font-semibold">Firmware</p><p>C++ (Arduino)</p></div>
+                            <div class="bg-slate-100 dark:bg-slate-700 p-2 rounded-md"><p class="font-semibold">Frontend</p><p>HTML, TailwindCSS, JS</p></div>
+                            <div class="bg-slate-100 dark:bg-slate-700 p-2 rounded-md"><p class="font-semibold">Communication</p><p>MQTT Protocol</p></div>
+                        </div>
+
+                        <h4 class="font-semibold text-indigo-600 dark:text-indigo-400">How It Works</h4>
+                        <p>The system leverages the ESP8266 Wi-Fi module as the central intelligence. This versatile micro-controller hosts a custom-developed webpage, acting as the intuitive control interface you are currently using. The real-world control of your appliances is managed through simple electronic circuits, interfacing directly with the ESP8266.</p>
+
+                        <h4 class="font-semibold text-indigo-600 dark:text-indigo-400">Key Features</h4>
+                        <ul class="list-disc list-inside pl-2 space-y-1">
+                            <li><strong>Remote Accessibility:</strong> Control your home environment from any device connected to your local network.</li>
+                            <li><strong>Seamless Integration:</strong> A user-friendly web interface eliminates the need for complex, proprietary apps.</li>
+                            <li><strong>Practical Engineering:</strong> A demonstration of efficient hardware-software co-design using widely available components.</li>
+                            <li><strong>Real-time Sync:</strong> Device status is synchronized across all connected clients using MQTT.</li>
+                        </ul>
+
+                        <h3 class="font-bold text-base text-indigo-600 dark:text-indigo-400 pt-2">Project Team and Credits</h3>
+                        <p>This project stands as a testament to practical engineering application, translating theoretical knowledge into a tangible, functional utility. It was collaboratively engineered and developed by students from Gkciet:</p>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 dark:bg-slate-700">
+                                        <th class="p-2 border border-slate-300 dark:border-slate-600 text-sm">Name</th>
+                                        <th class="p-2 border border-slate-300 dark:border-slate-600 text-sm">Academic</th>
+                                        <th class="p-2 border border-slate-300 dark:border-slate-600 text-sm">Role</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-slate-200 dark:border-slate-700">
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600 font-medium">Piku Mandal</td>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600">B.Tech (2nd Year)</td>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600">Concept, Software, Hardware & UI/UX</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600 font-medium">Arnab Mandal</td>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600">Diploma (3rd Year)</td>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600">Software, Hardware & UI/UX</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <p class="pt-2">We hope you enjoy the simplicity and convenience our Smart Home Automation System provides.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logout Button -->
+        <div class="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
+            <button id="logout-btn" class="w-full text-left px-3 py-2 rounded text-gray-700 dark:text-gray-200 hover:bg-red-100 dark:hover:bg-red-800/50 flex items-center gap-2">Logout</button>
+        </div>
+    </aside>
+
+    <!-- Menu Drawer Button -->
+    <button id="drawer-open" class="fixed top-4 left-4 z-30 bg-white dark:bg-slate-700 rounded-full shadow-lg p-2 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition sm:top-6 sm:left-6">
+        <svg class="w-6 h-6 text-indigo-700 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </button>
+
+    <div class="flex items-center justify-center min-h-screen p-4">
+    <!-- ================================================== -->
+    <!-- ==           AUTHENTICATION CONTAINER           == -->
+    <!-- ================================================== -->
+    <div id="auth-container" class="w-full max-w-sm mx-auto">
+        <div class="text-center mb-8 fade-in">
+            <svg class="mx-auto h-12 w-auto text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m-3-1l-3-1m-3 1l-3 1m-3-1l3 1m0 0l4.5-1.636m0 0l4.5 1.636m0 0l4.5-1.636m0 0l-1.5-.545m0 0l-1.5.545m0 0l-3 1m-3-1l3-1m3 1l3-1m-3 1l-3-1" />
+            </svg>
+            <h1 class="mt-4 text-3xl font-extrabold text-gray-900 dark:text-white fade-in delay-100">Welcome Back</h1>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400 fade-in delay-200">Log in to control your smart devices.</p>
+        </div>
+        <form class="space-y-6" onsubmit="event.preventDefault(); handleLogin();">
+            <div class="relative fade-in delay-200">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                </div>
+                  <input type="text" id="login-id" required placeholder="Id" class="w-full pl-10">
+            </div>
+            <div class="relative fade-in delay-300">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </div>
+                <input type="password" id="login-password" required placeholder="Password" class="w-full pl-10">
+                <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-indigo-500">
+                    <svg id="eye-open" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    <svg id="eye-closed" class="h-5 w-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                </button>
+            </div>
+            <button id="login-btn" type="submit" class="btn w-full flex justify-center items-center fade-in delay-400">
+                <span id="login-btn-text">Log In</span>
+                <svg id="login-spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </button>
+        </form>
+    </div>
+
+    <!-- ================================================== -->
+    <!-- ==             MAIN APP CONTAINER             == -->
+    <!-- ================================================== -->
+    <main id="main-app" class="hidden w-full max-w-2xl mx-auto card p-6 sm:p-8 space-y-8">
+
+        <!-- Dashboard Overview -->
+        <div id="dashboard-overview" class="mb-6">
+            <h2 class="text-xl font-bold section-title mb-4">Dashboard</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 text-center">
+                <!-- Total Devices -->
+                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl shadow-inner">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Total</p>
+                    <p id="dashboard-total-lights" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">0</p>
+                </div>
+                <!-- Devices ON -->
+                <div class="bg-green-100 dark:bg-green-900/40 p-3 rounded-xl shadow-inner">
+                    <p class="text-sm text-green-600 dark:text-green-400">On</p>
+                    <p id="dashboard-on-count" class="text-2xl font-bold text-green-600 dark:text-green-400">0</p>
+                </div>
+                <!-- Devices OFF -->
+                <div class="bg-red-100 dark:bg-red-900/40 p-3 rounded-xl shadow-inner">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Off</p>
+                    <p id="dashboard-off-count" class="text-2xl font-bold text-gray-600 dark:text-gray-400">0</p>
+                </div>
+                <!-- Timer Status -->
+                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl shadow-inner">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Timer</p>
+                    <p id="dashboard-timer-status" class="text-sm font-semibold text-gray-600 dark:text-gray-300 mt-2">No Timer</p>
+                </div>
+                <!-- Connection Status -->
+                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl shadow-inner flex flex-col justify-center items-center">
+                    <div id="connection-status" class="flex items-center gap-1.5" title="Web UI Connection">
+                        <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                        <p class="text-xs font-medium text-red-500">UI</p>
+                    </div>
+                    <div id="esp-connection-status" class="flex items-center gap-1.5 mt-1" title="ESP Device Connection">
+                        <div class="w-2 h-2 rounded-full bg-gray-400"></div>
+                        <p class="text-xs font-medium text-gray-500">ESP</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <h1 id="appliance-name" class="text-2xl sm:text-3xl font-bold section-title text-center">Smart Device Control</h1>
+
+            <!-- Voice Control Section -->
+            <div class="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-4 flex flex-col items-center shadow-inner">
+                <div class="w-full flex flex-col items-center">
+                    <div class="flex items-center justify-center w-full mb-2">
+                        <svg class="w-6 h-6 text-indigo-600 dark:text-indigo-300 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                        <h2 class="text-lg font-semibold section-title">Voice Control</h2>
+                    </div>
+                    <button id="voice-btn" class="btn mb-2 flex items-center gap-2">
+                        <span id="voice-btn-text">Start Listening</span>
+                    </button>
+                    <span id="voice-status" class="text-xs text-gray-500 dark:text-gray-300 h-4"></span>
+                    <button id="instructions-toggle" class="mt-2 text-indigo-600 dark:text-indigo-400 underline flex items-center gap-1 transition-colors duration-200">
+                        <span>Instructions</span>
+                        <svg id="instruction-chevron" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="voice-instructions" class="overflow-hidden max-h-0 transition-all duration-500 ease-in-out">
+                        <ul class="list-disc list-inside text-xs text-left text-gray-600 dark:text-gray-400 mt-2 pl-2 space-y-1">
+                            <li>Click "Start Listening" and wait for the prompt.</li>
+                            <li>Say a command clearly, for example:</li>
+                            <li class="ml-4"><i>"Turn on Desk Lamp"</i></li>
+                            <li class="ml-4"><i>"Turn off all lights"</i></li>
+                            <li>The system uses the custom names you set for each light.</li>
+                            <li>Voice control works best on Chrome & Edge browsers.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div class="flex justify-center gap-4">
+                <button id="turn-all-on" class="btn flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    Turn All ON
+                </button>
+                <button id="turn-all-off" class="btn flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    Turn All OFF
+                </button>
+            </div>
+
+            <!-- Light Control Cards Container -->
+            <div id="light-card-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                <!-- Light Groups: Living Room, Bedroom -->
+                <div id="group-living" class="mb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <h3 id="room-name-living" class="font-semibold text-indigo-700 dark:text-indigo-300">Living Room</h3>
+                        <button class="edit-room-name-btn icon-btn text-gray-400 hover:text-indigo-500" data-room="living">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 gap-4" id="living-room-cards"></div>
+                </div>
+                <div id="group-bedroom" class="mb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <h3 id="room-name-bedroom" class="font-semibold text-indigo-700 dark:text-indigo-300">Bedroom</h3>
+                        <button class="edit-room-name-btn icon-btn text-gray-400 hover:text-indigo-500" data-room="bedroom">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 gap-4" id="bedroom-cards"></div>
+                </div>
+            </div>
+
+            <!-- Automatic Task Timer -->
+            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-6">
+                <h2 class="section-title mb-4 text-center">Automatic Timer (All Lights)</h2>
+                <div id="active-timer-display" class="hidden bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 p-3 rounded-lg mb-4 flex justify-between items-center">
+                    <div>
+                        <p class="font-semibold">Active Timer</p>
+                        <p id="active-timer-text" class="text-sm"></p>
+                    </div>
+                    <button id="clear-timer-btn" class="btn text-sm font-semibold text-red-600 dark:text-red-400 hover:underline">Clear</button>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="on-time" class="block text-sm font-medium">Turn ON Time</label>
+                        <input type="time" id="on-time" class="input mt-1 block w-full" />
+                    </div>
+                    <div>
+                        <label for="off-time" class="block text-sm font-medium">Turn OFF Time</label>
+                        <input type="time" id="off-time" class="input mt-1 block w-full" />
+                    </div>
+                </div>
+                <button id="set-timer-btn" class="btn mt-4 w-full">Set Automatic Task</button>
+            </div>
+            
+            <!-- Activity Log -->
+            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-6">
+                <h2 class="section-title mb-4 text-center">Activity Log</h2>
+                <div class="flex items-center gap-2 mb-2">
+                    <input id="log-search" type="text" placeholder="Search log..." class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm w-2/3" />
+                    <select id="log-filter" class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm">
+                        <option value="all">All</option>
+                        <option value="on">ON</option>
+                        <option value="off">OFF</option>
+                        <option value="timer">Timer</option>
+                        <option value="voice">Voice</option>
+                        <option value="system">System</option>
+                    </select>
+                </div>
+                <div id="log-container" class="activity-log h-40 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 class="text-lg font-bold mb-4">Edit Appliance</h3>
+            <div class="space-y-4">
+                <div>
+                    <label for="edit-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                    <input type="text" id="edit-name" class="mt-1 block w-full input">
+                </div>
+                <div>
+                    <label for="edit-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
+                    <select id="edit-type" class="mt-1 block w-full input">
+                        <option value="light">Light</option>
+                        <option value="fan">Fan</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="cancel-edit-btn" class="btn bg-gray-500 hover:bg-gray-600">Cancel</button>
+                <button id="save-changes-btn" class="btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // IIFE to encapsulate the entire application logic
+        (function() {
+            // --- Enhanced Activity Log Logic ---
+            const logEntries = [];
+            function getLogIcon(type) {
+                switch(type) {
+                    case "on": return '<svg class="inline w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+                    case "off": return '<svg class="inline w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+                    case "timer": return '<svg class="inline w-4 h-4 text-yellow-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"></path></svg>';
+                    case "voice": return '<svg class="inline w-4 h-4 text-indigo-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10v2a7 7 0 0014 0v-2"></path></svg>';
+                    case "system": return '<svg class="inline w-4 h-4 text-gray-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/></svg>';
+                    default: return '';
+                }
+            }
+            function renderLog() {
+                const search = document.getElementById('log-search').value.toLowerCase();
+                const filter = document.getElementById('log-filter').value;
+                const container = document.getElementById('log-container');
+                container.innerHTML = '';
+                logEntries.filter(entry => {
+                    const matchesSearch = entry.text.toLowerCase().includes(search);
+                    const matchesFilter = filter === 'all' || entry.type === filter;
+                    return matchesSearch && matchesFilter;
+                }).forEach(entry => {
+                    container.innerHTML += `<div>${getLogIcon(entry.type)}<span class="text-cyan-600 dark:text-cyan-400">[${entry.time}]</span> > ${entry.text}</div>`;
+                });
+                container.scrollTop = container.scrollHeight;
+            }
+            function addLog(logText) {
+                const timestamp = new Date().toLocaleTimeString();
+                const sanitizedText = logText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                // Determine log type
+                let type = "system";
+                if (/Turned ON|ON/.test(logText)) type = "on";
+                else if (/Turned OFF|OFF/.test(logText)) type = "off";
+                else if (/timer|Timer|set/i.test(logText)) type = "timer";
+                else if (/Voice/i.test(logText)) type = "voice";
+                logEntries.push({ time: timestamp, text: sanitizedText, type });
+                renderLog();
+            }
+            document.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('log-search').addEventListener('input', renderLog);
+                document.getElementById('log-filter').addEventListener('change', renderLog);
+            });
+
+            // --- Dashboard Overview Logic ---
+            function updateDashboardOverview() {
+                const dashboardTotalLights = document.getElementById('dashboard-total-lights');
+                const dashboardOnCount = document.getElementById('dashboard-on-count');
+                const dashboardOffCount = document.getElementById('dashboard-off-count');
+                
+                if (!dashboardTotalLights) return; // Elements might not be ready
+
+                let onCount = 0;
+                const NUM_LIGHTS = 4; // Should be derived from `appliances` array
+                for (let i = 1; i <= NUM_LIGHTS; i++) {
+                    const toggle = document.getElementById(`light-toggle-${i}`);
+                    if (toggle && toggle.checked) onCount++;
+                }
+                dashboardTotalLights.textContent = NUM_LIGHTS;
+                dashboardOnCount.textContent = onCount;
+                dashboardOffCount.textContent = NUM_LIGHTS - onCount;
+            }
+
+            function updateDashboardTimerStatus(onTime, offTime) {
+                const dashboardTimerStatus = document.getElementById('dashboard-timer-status');
+                if (onTime && offTime) {
+                    dashboardTimerStatus.textContent = `Active`;
+                    dashboardTimerStatus.classList.remove('text-gray-600', 'dark:text-gray-300');
+                    dashboardTimerStatus.classList.add('text-green-600', 'dark:text-green-400');
+                } else {
+                    dashboardTimerStatus.textContent = 'No Timer';
+                    dashboardTimerStatus.classList.remove('text-green-600', 'dark:text-green-400');
+                    dashboardTimerStatus.classList.add('text-gray-600', 'dark:text-gray-300');
+                }
+            }
+
+            function applyTheme(theme) {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                } else if (theme === 'light') {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.add('light');
+                } else {
+                    // System
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.remove('light');
+                    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        document.documentElement.classList.add('dark');
+                    }
+                }
+                localStorage.theme = theme;
+                updateThemeButtons(theme);
+            }
+
+            function updateThemeButtons(theme) {
+                document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+                if (theme === 'dark') document.getElementById('theme-dark').classList.add('active');
+                else if (theme === 'light') document.getElementById('theme-light').classList.add('active');
+                else document.getElementById('theme-system').classList.add('active');
+            }
+
+            // Listen for system theme changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                if (localStorage.theme === 'system' || !localStorage.theme) {
+                    applyTheme('system');
+                }
+            });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                // Theme toggle logic
+                const theme = localStorage.theme || 'system';
+                applyTheme(theme);
+                document.getElementById('theme-light').onclick = () => applyTheme('light');
+                document.getElementById('theme-dark').onclick = () => applyTheme('dark');
+                document.getElementById('theme-system').onclick = () => applyTheme('system');
+
+                // --- Authentication Logic ---
+                const authContainer = document.getElementById('auth-container');
+                const mainAppContainer = document.getElementById('main-app');
+                const mainControlsHeader = document.getElementById('main-controls-header');
+                const logoutBtnDrawer = document.getElementById('logout-btn');
+                const logoutBtnMain = document.getElementById('logout-btn-main');
+                const passwordInput = document.getElementById('login-password');
+                const togglePasswordBtn = document.getElementById('toggle-password');
+                const eyeOpen = document.getElementById('eye-open');
+                const eyeClosed = document.getElementById('eye-closed');
+                const loginBtn = document.getElementById('login-btn');
+                const loginBtnText = document.getElementById('login-btn-text');
+                const loginSpinner = document.getElementById('login-spinner');
+
+                window.handleLogin = () => {
+                    // --- FIXED CREDENTIALS ---
+                    const FIXED_ID = "Admin";
+                    const FIXED_PASSWORD = "Admin";
+
+                    loginBtnText.classList.add('hidden');
+                    loginSpinner.classList.remove('hidden');
+                    loginBtn.disabled = true;
+
+                    const id = document.getElementById('login-id').value;
+                    const password = document.getElementById('login-password').value;
+
+                    // Simulate network delay for better UX
+                    setTimeout(() => {
+                        if (id === FIXED_ID && password === FIXED_PASSWORD) {
+                            sessionStorage.setItem('loggedInUser', id);
+                            showMainApp();
+                        } else {
+                            showToast('Invalid credentials.', 'error');
+                        }
+                        loginBtnText.classList.remove('hidden');
+                        loginSpinner.classList.add('hidden');
+                        loginBtn.disabled = false;
+                    }, 500);
+                };
+
+                const showMainApp = () => {
+                    authContainer.classList.add('hidden');
+                    mainAppContainer.classList.remove('hidden');
+                    mainControlsHeader.classList.remove('hidden');
+                    // Connect to MQTT only after successful login
+                    connectMqtt();
+                };
+
+                const showAuth = () => {
+                    sessionStorage.removeItem('loggedInUser');
+                    authContainer.classList.remove('hidden');
+                    mainAppContainer.classList.add('hidden');
+                    mainControlsHeader.classList.add('hidden');
+                    if (client && client.isConnected()) {
+                        client.disconnect();
+                    }
+                };
+
+                // Attach logout function to both buttons
+                logoutBtnDrawer.onclick = showAuth;
+                logoutBtnMain.onclick = showAuth;
+
+                // Show/Hide Password Logic
+                togglePasswordBtn.addEventListener('click', () => {
+                    const isPassword = passwordInput.type === 'password';
+                    passwordInput.type = isPassword ? 'text' : 'password';
+                    eyeOpen.classList.toggle('hidden', !isPassword);
+                    eyeClosed.classList.toggle('hidden', isPassword);
+                });
+
+                // Reset login button state on page load
+                loginBtnText.classList.remove('hidden');
+                loginSpinner.classList.add('hidden');
+                loginBtn.disabled = false;
+
+                const NUM_LIGHTS = 4;
+                const lightCardContainer = document.getElementById('light-card-container');
+                const turnAllOnBtn = document.getElementById('turn-all-on');
+                const turnAllOffBtn = document.getElementById('turn-all-off');
+
+                // Add default welcome entry to activity log
+                if (typeof addLog === 'function') {
+                    addLog("Welcome! Activity log initialized.");
+                }
+                // --- Quick Action Button Logic ---
+                turnAllOnBtn.addEventListener('click', () => {
+                    // Corrected to send "ON" command
+                    for (let i = 1; i <= NUM_LIGHTS; i++) publishMessage(`homeautomation/project/light/${i}/set`, "ON", false);
+                    addLog("Turned ON all lights via quick action.");
+                    showToast("All lights turned ON", "success");
+                });
+                turnAllOffBtn.addEventListener('click', () => {
+                    // Corrected to send "OFF" command
+                    for (let i = 1; i <= NUM_LIGHTS; i++) publishMessage(`homeautomation/project/light/${i}/set`, "OFF", false);
+                    addLog("Turned OFF all lights via quick action.");
+                    showToast("All lights turned OFF", "error");
+                });
+
+                // --- Individual Timer Logic ---
+                let individualTimers = {}; // Format: { lightId: [{id, time, action, element}, ...], ... }
+
+                function setIndividualTimer(lightNum) {
+                    const timeInput = document.getElementById(`timer-time-${lightNum}`);
+                    const actionSelect = document.getElementById(`timer-action-${lightNum}`);
+                    const time = timeInput.value;
+                    const action = actionSelect.value;
+
+                    if (!time) {
+                        showToast("Please select a time for the timer.", "warning");
+                        return;
+                    }
+
+                    if (!individualTimers[lightNum]) {
+                        individualTimers[lightNum] = [];
+                    }
+
+                    const timerId = `timer_${lightNum}_${new Date().getTime()}`;
+                    individualTimers[lightNum].push({ id: timerId, time, action });
+                    updateTimerList(lightNum);
+                    showToast(`Timer set for ${document.getElementById(`appliance-name-${lightNum}`).textContent} to turn ${action} at ${time}.`, "info");
+                    addLog(`Timer set for ${document.getElementById(`appliance-name-${lightNum}`).textContent} to turn ${action} at ${time}.`);
+                    timeInput.value = "";
+                }
+
+                function removeIndividualTimer(lightNum, timerId) {
+                    if (individualTimers[lightNum]) {
+                        individualTimers[lightNum] = individualTimers[lightNum].filter(timer => timer.id !== timerId);
+                        updateTimerList(lightNum);
+                        showToast("Timer removed.", "info");
+                    }
+                }
+
+                function updateTimerList(lightNum) {
+                    const timerListEl = document.getElementById(`timer-list-${lightNum}`);
+                    timerListEl.innerHTML = '';
+                    if (individualTimers[lightNum] && individualTimers[lightNum].length > 0) {
+                        individualTimers[lightNum].forEach(timer => {
+                            const timerEl = document.createElement('div');
+                            timerEl.className = 'flex items-center justify-between bg-indigo-100 dark:bg-indigo-800/50 p-1 rounded';
+                            timerEl.innerHTML = `
+                                <span>${timer.action} at ${new Date('1970-01-01T' + timer.time).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true})}</span>
+                                <button class="remove-individual-timer-btn text-red-500 hover:text-red-400" data-light-num="${lightNum}" data-timer-id="${timer.id}">&times;</button>
+                            `;
+                            timerListEl.appendChild(timerEl);
+                        });
+                    } else {
+                        timerListEl.innerHTML = '<p class="text-gray-500">No active timers.</p>';
+                    }
+                }
+
+                function checkTimers() {
+                    const now = new Date();
+                    const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+
+                    for (const lightNum in individualTimers) {
+                        if (individualTimers[lightNum].length > 0) {
+                            individualTimers[lightNum].forEach(timer => {
+                                if (timer.time === currentTime) {
+                                    const applianceName = document.getElementById(`appliance-name-${lightNum}`).textContent;
+                                    // Corrected to send the intended action
+                                    publishMessage(`homeautomation/project/light/${lightNum}/set`, timer.action, false);
+                                    addLog(`Timer executed: Turned ${timer.action} ${applianceName}.`);
+                                    showToast(`Timer: Turned ${timer.action} ${applianceName}.`, "success");
+                                    // Remove timer after execution
+                                    removeIndividualTimer(lightNum, timer.id);
+                                }
+                            });
+                        }
+                    }
+                }
+
+                setInterval(checkTimers, 1000); // Check every second
+
+                // --- Toast Notification Logic ---
+                function showToast(message, type = 'info') {
+                    const container = document.getElementById('toast-container');
+                    const toast = document.createElement('div');
+                    const colors = {
+                        info: 'bg-blue-500',
+                        success: 'bg-green-500',
+                        warning: 'bg-yellow-500',
+                        error: 'bg-red-500'
+                    };
+                    toast.className = `pointer-events-auto text-white text-sm rounded-lg shadow-lg px-4 py-2 transform transition-all duration-300 ease-in-out ${colors[type]} translate-x-full opacity-0`;
+                    toast.textContent = message;
+                    container.appendChild(toast);
+
+                    // Animate in
+                    setTimeout(() => {
+                        toast.classList.remove('translate-x-full', 'opacity-0');
+                    }, 100);
+
+                    // Animate out and remove
+                    setTimeout(() => {
+                        toast.classList.add('opacity-0', 'translate-x-full');
+                        setTimeout(() => toast.remove(), 300);
+                    }, 4000);
+                }
+
+                // --- MQTT Configuration ---
+                const brokerHost = "test.mosquitto.org";
+                const brokerPort = 8081;
+                const clientId = "WebAppClient_" + new Date().getTime();
+                // --- TOPICS FOR SYNCING STATE ---
+                const light_name_topic_wildcard = "homeautomation/project/light/+/name";
+                const light_type_topic_wildcard = "homeautomation/project/light/+/type";
+                const room_name_topic_wildcard = "homeautomation/project/room/+/name";
+                const light_config_timer_topic = "homeautomation/project/config/timer";
+                const esp_status_topic = "homeautomation/project/esp/status";
+                // --- TOPICS FOR FUNCTIONALITY ---
+                const light_status_topic_wildcard = "homeautomation/project/light/+/status";
+                const light_log_topic = "homeautomation/project/light/log";
+                const light_timer_set_topic = "homeautomation/project/light/setTimer";
+                const light_timer_clear_topic = "homeautomation/project/light/clearTimer";
+
+                // --- UI Elements ---
+                const connectionStatusEl = document.getElementById('connection-status');
+                const espConnectionStatusEl = document.getElementById('esp-connection-status');
+                const logContainerEl = document.getElementById('log-container');
+                const setTimerBtn = document.getElementById('set-timer-btn');
+                const onTimeInput = document.getElementById('on-time');
+                const offTimeInput = document.getElementById('off-time');
+                const activeTimerDisplay = document.getElementById('active-timer-display');
+                const activeTimerText = document.getElementById('active-timer-text');
+                const clearTimerBtn = document.getElementById('clear-timer-btn');
+                const drawer = document.getElementById('drawer');
+                const drawerBackdrop = document.getElementById('drawer-backdrop');
+                const drawerOpen = document.getElementById('drawer-open');
+                const drawerClose = document.getElementById('drawer-close');
+                const voiceBtn = document.getElementById('voice-btn');
+                const voiceBtnText = document.getElementById('voice-btn-text');
+                const voiceStatus = document.getElementById('voice-status');
+                const instructionsToggle = document.getElementById('instructions-toggle');
+                const voiceInstructions = document.getElementById('voice-instructions');
+                const instructionChevron = document.getElementById('instruction-chevron');
+
+                // --- MQTT Client Setup ---
+                let client;
+
+                function connectMqtt() {
+                    if (client && client.isConnected()) {
+                        console.log("Already connected to MQTT.");
+                        return;
+                    }
+                    client = new Paho.Client(brokerHost, brokerPort, clientId);
+                    client.onConnectionLost = onConnectionLost;
+                    client.onMessageArrived = onMessageArrived;
+                    client.connect({
+                        timeout: 3,
+                        useSSL: true,
+                        onSuccess: onConnect,
+                        onFailure: onFailure,
+                    });
+                }
+                
+                // --- MQTT Functions ---
+                function onConnect() {
+                    const statusDot = connectionStatusEl.querySelector('div');
+                    const statusText = connectionStatusEl.querySelector('p');
+                    statusDot.classList.replace('bg-red-500', 'bg-green-500');
+                    statusDot.classList.remove('animate-pulse');
+                    statusText.classList.replace('text-red-500', 'text-green-500');
+                    // Subscribe to all functional topics
+                    client.subscribe(light_status_topic_wildcard);
+                    client.subscribe(light_log_topic);
+                    // --- SUBSCRIBE TO STATE TOPICS TO SYNC ---
+                    client.subscribe(light_name_topic_wildcard);
+                    client.subscribe(light_type_topic_wildcard);
+                    client.subscribe(room_name_topic_wildcard);
+                    client.subscribe(light_config_timer_topic);
+                    client.subscribe(esp_status_topic);
+
+                    addLog("Web UI connected. Requesting initial status...");
+                    for (let i = 1; i <= NUM_LIGHTS; i++) {
+                        publishMessage(`homeautomation/project/light/${i}/getStatus`, "GET", false); // Don't retain status requests
+                    }
+                    // Also request the ESP's status
+                    publishMessage(`homeautomation/project/esp/getStatus`, "GET", false);
+                    updateDashboardOverview();
+                }
+
+                function onFailure(message) {
+                    const statusText = connectionStatusEl.querySelector('p');
+                    statusText.textContent = "UI Failed";
+                    console.error("UI Connection failed: " + message.errorMessage);
+                }
+
+                function onConnectionLost(responseObject) {
+                    if (responseObject.errorCode !== 0) {
+                        const statusDot = connectionStatusEl.querySelector('div');
+                        const statusText = connectionStatusEl.querySelector('p');
+                        statusDot.classList.replace('bg-green-500', 'bg-red-500');
+                        statusDot.classList.add('animate-pulse');
+                        statusText.classList.replace('text-green-500', 'text-red-500');
+                        statusText.textContent = "UI Lost";
+                        console.error("UI Connection lost: " + responseObject.errorMessage);
+                    }
+                }
+
+                function onMessageArrived(message) {
+                    const topic = message.destinationName;
+                    const payload = message.payloadString;
+
+                    if (topic === light_log_topic) {
+                        addLog(payload);
+                    } 
+                    // Handle individual light status updates
+                    else if (topic.startsWith("homeautomation/project/light/") && topic.endsWith("/status")) {
+                        const topicParts = topic.split('/');
+                        const lightNumber = parseInt(topicParts[3]); // e.g., from .../light/1/status
+                        if (!isNaN(lightNumber)) updateLightUI(lightNumber, payload);
+                    }
+                    // --- HANDLE INCOMING STATE SYNC MESSAGES ---
+                    else if (topic.startsWith("homeautomation/project/room/")) {
+                        const topicParts = topic.split('/');
+                        const room = topicParts[3];
+                        const nameEl = document.getElementById(`room-name-${room}`);
+                        if (nameEl && payload) {
+                            nameEl.textContent = payload;
+                        }
+                    }
+                    else if (topic.includes("/name")) {
+                        const topicParts = topic.split('/');
+                        const lightNumber = parseInt(topicParts[3]);
+                        if (!isNaN(lightNumber) && payload) {
+                            const appliance = appliances.find(a => a.id == lightNumber);
+                            if(appliance) appliance.name = payload;
+                            document.getElementById(`appliance-name-${lightNumber}`).textContent = payload;
+                        }
+                    }
+                    else if (topic.includes("/type")) {
+                        const topicParts = topic.split('/');
+                        const lightNumber = parseInt(topicParts[3]);
+                        if (!isNaN(lightNumber) && payload) {
+                            const appliance = appliances.find(a => a.id == lightNumber);
+                            if (appliance) {
+                                appliance.type = payload;
+                                const iconContainer = document.getElementById(`icon-container-${lightNumber}`);
+                                iconContainer.innerHTML = ICONS[payload] || ICONS['other'];
+                                iconContainer.dataset.type = payload;
+                            }
+                        }
+                    }
+                    else if (topic === light_config_timer_topic) {
+                        if (payload) { // If payload is not empty, set timer
+                            const { on, off } = JSON.parse(payload);
+                            onTimeInput.value = on;
+                            offTimeInput.value = off;
+                            displayActiveTimer(on, off);
+                        } else { // If payload is empty, clear timer
+                            hideActiveTimer();
+                        }
+                    }
+                    else if (topic === esp_status_topic) {
+                        const espStatusDot = espConnectionStatusEl.querySelector('div');
+                        const espStatusText = espConnectionStatusEl.querySelector('p');
+                        if (payload.trim().toLowerCase() === "online") {
+                            espStatusDot.classList.remove('bg-gray-400', 'bg-red-500');
+                            espStatusDot.classList.add('bg-green-500');
+                            espStatusText.classList.remove('text-gray-500', 'text-red-500');
+                            espStatusText.classList.add('text-green-500');
+                        } else { // "offline" or any other status
+                            espStatusDot.classList.remove('bg-gray-400', 'bg-green-500');
+                            espStatusDot.classList.add('bg-red-500');
+                            espStatusText.classList.remove('text-gray-500', 'text-green-500');
+                            espStatusText.classList.add('text-red-500');
+                        }
+
+                        // Handle the LWT message for offline status
+                        if (payload.trim().toLowerCase() === "offline") {
+                            addLog("ESP device has gone offline.");
+                            showToast("ESP device disconnected.", "error");
+                        }
+                    }
+                }
+
+                function publishMessage(topic, payload, retained = false) {
+                    if (!client || !client.isConnected()) {
+                        addLog("Cannot publish. Not connected to broker.");
+                        return;
+                    }
+                    const message = new Paho.Message(payload);
+                    message.destinationName = topic;
+                    message.retained = retained; // Set the retained flag
+                    client.send(message);
+                }
+
+                // --- UI Logic ---
+                function updateLightUI(lightNumber, status) {
+                    const lightToggleEl = document.getElementById(`light-toggle-${lightNumber}`);
+                    const statusBadgeEl = document.getElementById(`status-badge-${lightNumber}`);
+                    const iconContainerEl = document.getElementById(`icon-container-${lightNumber}`);
+                    const cardEl = document.getElementById(`card-${lightNumber}`);
+                    if (!lightToggleEl || !statusBadgeEl || !iconContainerEl) return;
+
+                    // Remove pending animation as we now have a confirmed state
+                    cardEl.classList.remove("card-pending");
+
+                    const isON = (status === "ON");
+                    lightToggleEl.checked = isON;
+                    // Update badge
+                    if (isON) {
+                        cardEl.classList.add("card-on");
+                        statusBadgeEl.textContent = "ON";
+                        statusBadgeEl.classList.remove("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
+                        statusBadgeEl.classList.add("bg-green-400", "dark:bg-green-600", "text-white");
+                    } else if (status === "OFF") {
+                        statusBadgeEl.textContent = "OFF";
+                        statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "text-white");
+                        statusBadgeEl.classList.add("bg-red-400", "dark:bg-red-600", "text-white");
+                    } else {
+                        cardEl.classList.remove("card-on");
+                        statusBadgeEl.textContent = "Unknown";
+                        statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "bg-red-400", "dark:bg-red-600", "text-white");
+                        statusBadgeEl.classList.add("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
+                    }
+                    // Animate icon for ON state
+                    if (isON) {
+                        iconContainerEl.classList.add("icon-on");
+                    } else {
+                        iconContainerEl.classList.remove("icon-on");
+                    }
+                    // Update the main dashboard overview whenever a light's UI changes
+                    updateDashboardOverview();
+                }
+
+                function addLog(logText) {
+                    const timestamp = new Date().toLocaleTimeString();
+                    const sanitizedText = logText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    // Determine log type
+                    let type = "system";
+                    if (/Turned ON|ON/.test(logText)) type = "on";
+                    else if (/Turned OFF|OFF/.test(logText)) type = "off";
+                    else if (/timer|Timer|set/i.test(logText)) type = "timer";
+                    else if (/Voice/i.test(logText)) type = "voice";
+                    logEntries.push({ time: timestamp, text: sanitizedText, type });
+                    renderLog();
+                }
+
+                // --- Timer Logic ---
+                function displayActiveTimer(onTime, offTime) {
+                    const formatTime = (time) => new Date('1970-01-01T' + time).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true});
+                    activeTimerText.textContent = `ON: ${formatTime(onTime)} - OFF: ${formatTime(offTime)}`;
+                    activeTimerDisplay.classList.remove('hidden');
+                }
+
+                function hideActiveTimer() {
+                    activeTimerDisplay.classList.add('hidden');
+                    onTimeInput.value = '';
+                    offTimeInput.value = '';
+                }
+                 
+                // --- Speech Synthesis ---
+                function speak(text) {
+                    if ('speechSynthesis' in window) {
+                        const utter = new SpeechSynthesisUtterance(text);
+                        utter.lang = 'en-US';
+                        window.speechSynthesis.speak(utter);
+                    }
+                }
+
+                // --- Voice Control Logic ---
+                let recognition, recognizing = false;
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (SpeechRecognition) {
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = false;
+                    recognition.lang = 'en-US';
+                    recognition.interimResults = false;
+                    recognition.maxAlternatives = 1;
+
+                    recognition.onstart = () => {
+                        recognizing = true;
+                        voiceBtnText.textContent = "Listening...";
+                        voiceStatus.textContent = "Say a command...";
+                    };
+
+                    recognition.onerror = (event) => {
+                        voiceStatus.textContent = "Error: " + event.error;
+                    };
+
+                    recognition.onend = () => {
+                        recognizing = false;
+                        voiceBtnText.textContent = "Start Listening";
+                        setTimeout(() => { if (!recognizing) voiceStatus.textContent = "" }, 2000);
+                    };
+
+                    recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript.trim().toLowerCase();
+                        voiceStatus.textContent = `Heard: "${transcript}"`;
+                        
+                        if (transcript.includes("turn on all lights")) {
+                            for (let i = 1; i <= NUM_LIGHTS; i++) publishMessage(`homeautomation/project/light/${i}/set`, "ON");
+                            addLog("Voice: Turn ON all lights");
+                            speak("Turning on all lights");
+                            return;
+                        } 
+                        if (transcript.includes("turn off all lights")) {
+                            for (let i = 1; i <= NUM_LIGHTS; i++) publishMessage(`homeautomation/project/light/${i}/set`, "OFF");
+                            addLog("Voice: Turn OFF all lights");
+                            speak("Turning off all lights");
+                            return;
+                        }
+
+                        const stateMatch = transcript.match(/turn (on|off)/);
+                        if (stateMatch) {
+                            const state = stateMatch[1]; // "on" or "off"
+                            for (let i = 1; i <= NUM_LIGHTS; i++) {
+                                const customName = document.getElementById(`appliance-name-${i}`).textContent.toLowerCase();
+                                const defaultName = `light ${i}`;
+                                if (transcript.includes(customName) || transcript.includes(defaultName)) {
+                                    publishMessage(`homeautomation/project/light/${i}/set`, state.toUpperCase());
+                                    addLog(`Voice: Turn ${state.toUpperCase()} ${customName}`);
+                                    speak(`Turning ${state} ${customName}`);
+                                    return; 
+                                }
+                            }
+                        }
+                        voiceStatus.textContent = `Unrecognized command.`;
+                        speak("Sorry, I did not understand the command.");
+                    };
+
+                    voiceBtn.addEventListener('click', () => {
+                        if (recognizing) {
+                            recognition.stop();
+                        } else {
+                            recognition.start();
+                        }
+                    });
+                } else {
+                    voiceBtn.disabled = true;
+                    voiceBtnText.textContent = "Not Supported";
+                    voiceStatus.textContent = "Voice recognition not supported in this browser.";
+                }
+
+                // --- Name Editing Logic ---
+                let editingLightNum = null;
+                const editModal = document.getElementById('edit-modal');
+                const editNameInput = document.getElementById('edit-name');
+                const editTypeSelect = document.getElementById('edit-type');
+
+                function openEditModal(lightNum) {
+                    editingLightNum = lightNum;
+                    const appliance = appliances.find(a => a.id == lightNum);
+                    editNameInput.value = appliance.name;
+                    editTypeSelect.value = appliance.type;
+                    editModal.classList.remove('hidden');
+                    editModal.classList.add('flex');
+                }
+
+                function closeEditModal() {
+                    editingLightNum = null;
+                    editModal.classList.add('hidden');
+                    editModal.classList.remove('flex');
+                }
+
+                document.getElementById('save-changes-btn').addEventListener('click', () => {
+                    if (editingLightNum) {
+                        const newName = editNameInput.value.trim();
+                        const newType = editTypeSelect.value;
+                        saveChanges(editingLightNum, newName, newType);
+                    }
+                    closeEditModal();
+                });
+
+                document.getElementById('cancel-edit-btn').addEventListener('click', closeEditModal);
+
+                function saveChanges(lightNum, newName, newType) {
+                    const appliance = appliances.find(a => a.id == lightNum);
+                    if (newName && newName !== appliance.name) {
+                        appliance.name = newName;
+                        document.getElementById(`appliance-name-${lightNum}`).textContent = newName;
+                        publishMessage(`homeautomation/project/light/${lightNum}/name`, newName, true);
+                    }
+                    if (newType && newType !== appliance.type) {
+                        appliance.type = newType;
+                        const iconContainer = document.getElementById(`icon-container-${lightNum}`);
+                        iconContainer.innerHTML = ICONS[newType] || ICONS['other'];
+                        iconContainer.dataset.type = newType;
+                        publishMessage(`homeautomation/project/light/${lightNum}/type`, newType, true);
+                    }
+                }
+
+                function enableRoomNameEditing(room) {
+                    const nameEl = document.getElementById(`room-name-${room}`);
+                    const currentName = nameEl.textContent;
+                    
+                    const inputEl = document.createElement('input');
+                    inputEl.type = 'text';
+                    inputEl.value = currentName;
+                    inputEl.className = 'room-name-input font-semibold bg-transparent border-b-2 border-indigo-400 focus:outline-none text-gray-800 dark:text-gray-100';
+
+                    nameEl.replaceWith(inputEl);
+                    inputEl.focus();
+                    inputEl.select();
+
+                    const saveAndReplace = () => {
+                        const newName = inputEl.value.trim();
+                        
+                        const newNameEl = document.createElement('h3');
+                        newNameEl.id = `room-name-${room}`;
+                        newNameEl.className = 'font-semibold text-indigo-700 dark:text-indigo-300';
+                        
+                        if (newName && newName !== currentName) {
+                            saveRoomName(room, newName);
+                            newNameEl.textContent = newName;
+                        } else {
+                            newNameEl.textContent = currentName;
+                        }
+                        inputEl.replaceWith(newNameEl);
+                    };
+
+                    inputEl.addEventListener('blur', saveAndReplace);
+                    inputEl.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveAndReplace();
+                        } else if (e.key === 'Escape') {
+                            inputEl.value = currentName; // Revert change
+                            saveAndReplace();
+                        }
+                    });
+                }
+
+                function saveRoomName(room, newName) {
+                    publishMessage(`homeautomation/project/room/${room}/name`, newName, true);
+                }
+                
+                lightCardContainer.addEventListener('click', function(event) {
+                    const editBtn = event.target.closest('.edit-btn');
+                    if (editBtn) {
+                        openEditModal(editBtn.dataset.lightNum);
+                    }
+
+                    const editRoomBtn = event.target.closest('.edit-room-name-btn');
+                    if (editRoomBtn) {
+                        enableRoomNameEditing(editRoomBtn.dataset.room);
+                    }
+                    
+                    const toggleSwitch = event.target.closest('.toggle-switch');
+                    if (toggleSwitch) {
+                        const checkbox = toggleSwitch.querySelector('.toggle-checkbox');
+                        const lightNum = checkbox.dataset.lightNum;
+                        // Add pending state for immediate feedback
+                        const cardEl = document.getElementById(`card-${lightNum}`);
+                        if (cardEl) cardEl.classList.add('card-pending');
+
+                        const state = checkbox.checked ? "ON" : "OFF";
+                        publishMessage(`homeautomation/project/light/${lightNum}/set`, state, false);
+                    }
+
+                    const setTimerBtn = event.target.closest('.set-individual-timer-btn');
+                    if (setTimerBtn) {
+                        setIndividualTimer(setTimerBtn.dataset.lightNum);
+                    }
+
+                    const removeTimerBtn = event.target.closest('.remove-individual-timer-btn');
+                    if (removeTimerBtn) {
+                        removeIndividualTimer(removeTimerBtn.dataset.lightNum, removeTimerBtn.dataset.timerId);
+                    }
+                });
+                
+                setTimerBtn.addEventListener('click', () => {
+                    const onTime = onTimeInput.value;
+                    const offTime = offTimeInput.value;
+                    if (!onTime || !offTime) {
+                        showToast("Please select both ON and OFF times.", "warning");
+                        return;
+                    }
+                    const timerPayload = JSON.stringify({ on: onTime, off: offTime });
+                    // Publish to the config topic for other UIs to sync
+                    publishMessage(light_config_timer_topic, timerPayload, true);
+                    // Also publish to the functional topic for the ESP to act on
+                    publishMessage(light_timer_set_topic, timerPayload, false);
+                    addLog(`Setting timer: ON at ${onTime}, OFF at ${offTime}.`);
+                    showToast(`Timer set: ON at ${onTime}, OFF at ${offTime}`, "success");
+                });
+
+                clearTimerBtn.addEventListener('click', () => {
+                    // Publish an empty payload to the config topic to clear the retained message
+                    publishMessage(light_config_timer_topic, "", true); 
+                    // Publish the functional clear command to the ESP
+                    publishMessage(light_timer_clear_topic, "CLEAR", false);
+                    addLog("Active timer has been cleared.");
+                    showToast("Active timer cleared", "info");
+                });
+
+                // --- DRAWER AND ACCORDION LOGIC ---
+                drawerOpen.onclick = () => {
+                    drawer.classList.replace('drawer-closed', 'drawer-open');
+                    drawerBackdrop.classList.remove('hidden');
+                };
+                const closeDrawer = () => {
+                    drawer.classList.replace('drawer-open', 'drawer-closed');
+                    drawerBackdrop.classList.add('hidden');
+                };
+                drawerClose.onclick = closeDrawer;
+                drawerBackdrop.onclick = closeDrawer;
+                
+                // Accordion Logic
+                drawer.addEventListener('click', (e) => {
+                    const toggle = e.target.closest('.accordion-toggle');
+                    if (!toggle) return;
+
+                    const content = document.getElementById(`accordion-${toggle.dataset.accordion}`);
+                    const chevron = toggle.querySelector('svg');
+                    const isExpanded = content.style.maxHeight && content.style.maxHeight !== '0px';
+
+                    // Close all other sections
+                    drawer.querySelectorAll('.accordion-content').forEach(item => {
+                        if (item !== content) {
+                            item.style.maxHeight = '0px';
+                             const otherChevron = item.previousElementSibling.querySelector('svg');
+                             if (otherChevron) otherChevron.classList.remove('rotate-180');
+                        }
+                    });
+
+                    // Toggle the clicked section
+                    if (isExpanded) {
+                        content.style.maxHeight = '0px';
+                        chevron.classList.remove('rotate-180');
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + 'px';
+                        chevron.classList.add('rotate-180');
+                    }
+                });
+
+                document.getElementById('feedback-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const feedbackSuccess = document.getElementById('feedback-success');
+                    const email = document.getElementById('feedback-email').value;
+                    const message = document.getElementById('feedback-message').value;
+
+                    // Updated to send to both email addresses
+                    const recipients = 'pikumandal5233@gmail.com,arnabmandal123123@gmail.com';
+                    const subject = 'Feedback from Smart Home UI';
+                    const body = `Message from: ${email}\n\n${message}`;
+                    const mailtoLink = `mailto:${recipients}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                    
+                    window.location.href = mailtoLink;
+
+                    feedbackSuccess.classList.remove('hidden');
+                    setTimeout(() => feedbackSuccess.classList.add('hidden'), 3000);
+                    e.target.reset();
+                });
+
+                instructionsToggle.addEventListener('click', () => {
+                    const isHidden = voiceInstructions.style.maxHeight === '' || voiceInstructions.style.maxHeight === '0px';
+                    if (isHidden) {
+                        voiceInstructions.style.maxHeight = voiceInstructions.scrollHeight + "px";
+                        instructionChevron.classList.add('rotate-180');
+                    } else {
+                        voiceInstructions.style.maxHeight = '0px';
+                        instructionChevron.classList.remove('rotate-180');
+                    }
+                });
+
+                // --- Initial Page Load Check ---
+                if (sessionStorage.getItem('loggedInUser')) {
+                    showMainApp();
+                }
+
+                // --- DYNAMIC UI RENDERING ---
+                const ICONS = {
+                    light: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 21a2 2 0 01-2-2V17a2 2 0 012-2h6a2 2 0 012 2v2a2 2 0 01-2 2H9zM9 15V9a3 3 0 013-3h0a3 3 0 013 3v6M12 6V3m-4 3h8"></path></svg>',
+                    fan: '<svg class="w-16 h-16 mx-auto appliance-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5.5A6.5 6.5 0 1 0 18.5 12H12V5.5z" /><path d="M12 18.5A6.5 6.5 0 1 0 5.5 12H12v6.5z" /><path d="M5.5 12A6.5 6.5 0 1 0 12 5.5V12H5.5z" /></svg>',
+                    other: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 20a1 1 0 01-1-1v-8H7a1 1 0 01-1-1V5a1 1 0 011-1h10a1 1 0 011 1v5a1 1 0 01-1 1h-3v8a1 1 0 01-1 1h-2z"></path></svg>'
+                };
+                const appliances = [
+                    { id: 1, name: 'Ceiling Light', group: 'living', type: 'light' },
+                    { id: 2, name: 'Table Lamp', group: 'living', type: 'light' },
+                    { id: 3, name: 'Bedside Lamp', group: 'bedroom', type: 'light' },
+                    { id: 4, name: 'Fan', group: 'bedroom', type: 'fan' }
+                ];
+
+                function createApplianceCard(appliance) {
+                    return `
+                    <div id="card-${appliance.id}" class="card bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 text-center transition-all duration-300">
+                        <div id="name-container-${appliance.id}" class="flex items-center justify-center gap-2 mb-2">
+                             <h2 id="appliance-name-${appliance.id}" class="text-lg font-bold text-gray-800 dark:text-gray-100">${appliance.name}</h2>
+                             <button class="edit-btn icon-btn text-gray-400 hover:text-indigo-500" data-light-num="${appliance.id}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+                             </button>
+                        </div>
+                        <div class="mb-4 relative flex items-center justify-center">
+                            <span id="status-badge-${appliance.id}" class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-300">Unknown</span>
+                            <span id="icon-container-${appliance.id}" data-type="${appliance.type}">${ICONS[appliance.type] || ICONS['other']}</span>
+                        </div>
+                        <label for="light-toggle-${appliance.id}" class="toggle-switch">
+                            <input type="checkbox" id="light-toggle-${appliance.id}" data-light-num="${appliance.id}" class="toggle-checkbox"/>
+                            <span class="toggle-track"></span>
+                            <span class="toggle-thumb"></span>
+                        </label>
+
+                        <!-- Individual Timer Section -->
+                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <div class="flex items-center justify-center gap-2">
+                                <input type="time" id="timer-time-${appliance.id}" class="input w-28 text-sm timer-input" />
+                                <select id="timer-action-${appliance.id}" class="input text-sm timer-input">
+                                    <option value="ON">ON</option>
+                                    <option value="OFF">OFF</option>
+                                </select>
+                                <button class="set-individual-timer-btn btn text-sm" data-light-num="${appliance.id}">Set</button>
+                            </div>
+                            <div id="timer-list-${appliance.id}" class="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1"></div>
+                        </div>
+                    </div>`;
+                }
+
+                function renderAllAppliances() {
+                    const livingRoomContainer = document.getElementById('living-room-cards');
+                    const bedroomContainer = document.getElementById('bedroom-cards');
+                    livingRoomContainer.innerHTML = appliances.filter(a => a.group === 'living').map(createApplianceCard).join('');
+                    bedroomContainer.innerHTML = appliances.filter(a => a.group === 'bedroom').map(createApplianceCard).join('');
+                    updateDashboardOverview();
+                }
+                renderAllAppliances();
+
+            });
+
+        })(); // End of IIFE
+    </script>
+</body>
+</html>
