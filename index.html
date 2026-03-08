@@ -15,8 +15,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Chart.js Date Adapter for time-based charts -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <!-- SheetJS for Excel export -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     
     <!-- Firebase SDK v9+ (Modular) -->
     <script type="module">
@@ -1343,14 +1341,17 @@
             <div class="card p-6">
                 <div class="flex flex-wrap justify-between items-center mb-4">
                     <h2 class="text-xl font-bold">📊 Sensor History</h2>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-indigo-600 text-white" data-range="1" onclick="changeSensorTimeRange(1)">1H</button>
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="6" onclick="changeSensorTimeRange(6)">6H</button>
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="24" onclick="changeSensorTimeRange(24)">24H</button>
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="168" onclick="changeSensorTimeRange(168)">7D</button>
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="8760" onclick="changeSensorTimeRange(8760)">365D</button>
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="-1" onclick="changeSensorTimeRange(-1)">ALL</button>
-                        <button class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700" onclick="exportSensorData()">📥 Excel</button>
+                        <button class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 flex items-center gap-1 transition shadow-md" onclick="exportSensorAnalyticsToPDF()" title="Export Sensor Report to PDF">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            PDF
+                        </button>
                     </div>
                 </div>
                 
@@ -1374,7 +1375,7 @@
             <div class="card p-6">
                 <div class="flex flex-wrap justify-between items-center mb-4">
                     <h2 class="text-xl font-bold">⚡ Power Monitor Analytics (PZEM-004T)</h2>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-indigo-600 text-white" data-range="1" onclick="changePZEMTimeRange(1)">1H</button>
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="6" onclick="changePZEMTimeRange(6)">6H</button>
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="24" onclick="changePZEMTimeRange(24)">24H</button>
@@ -1382,7 +1383,10 @@
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="720" onclick="changePZEMTimeRange(720)">30D</button>
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="8760" onclick="changePZEMTimeRange(8760)">365D</button>
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="-1" onclick="changePZEMTimeRange(-1)">ALL</button>
-                        <button class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700" onclick="exportPZEMData()">📥 Excel</button>
+                        <button class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 flex items-center gap-1 transition shadow-md" onclick="exportPZEMAnalyticsToPDF()" title="Export Power Report to PDF">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            PDF
+                        </button>
                     </div>
                 </div>
                 
@@ -1539,11 +1543,11 @@
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
                     <h2 class="text-2xl font-bold text-gray-800">Logs</h2>
                     <div class="flex flex-wrap gap-2">
-                        <button id="export-logs-excel-btn" class="btn bg-green-600 hover:bg-green-700 text-sm">
-                            <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-                            Excel
+                        <button id="export-logs-pdf-btn" class="btn bg-blue-500 hover:bg-blue-600 text-sm">
+                            <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/></svg>
+                            PDF
                         </button>
-                        <button id="export-logs-btn" class="btn bg-blue-500 hover:bg-blue-600 text-sm">
+                        <button id="export-logs-btn" class="btn bg-green-500 hover:bg-green-600 text-sm">
                             <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
                             TXT
                         </button>
@@ -4053,32 +4057,7 @@ let recognition;
 // Runtime getter for speech synthesis - prefers native Web Speech API but falls back to AndroidTTS bridge
 function getSynthesis() {
     try {
-        // Try AndroidTTS first (native Android) - more reliable in Android WebView
-        if (window.AndroidTTS && typeof window.AndroidTTS.speak === 'function') {
-            console.log('🔊 Using AndroidTTS for speech synthesis');
-            return {
-                speak: function(text) { 
-                    try { 
-                        console.log('🔊 AndroidTTS speaking:', text);
-                        window.AndroidTTS.speak(text); 
-                    } catch(e) { 
-                        console.error('AndroidTTS.speak failed', e); 
-                    } 
-                },
-                cancel: function() { try { window.AndroidTTS.cancel(); } catch(e) {} },
-                isSpeaking: function() { 
-                    try { 
-                        return !!window.AndroidTTS && window.AndroidTTS.isSpeaking && window.AndroidTTS.isSpeaking() === true; 
-                    } catch(e) { 
-                        return false; 
-                    } 
-                }
-            };
-        }
-        
-        // Fallback to Web Speech API if available
         if (window.speechSynthesis && typeof window.speechSynthesis.speak === 'function') {
-            console.log('🔊 Using Web Speech API for speech synthesis');
             return {
                 speak: function(text) {
                     try {
@@ -4088,27 +4067,25 @@ function getSynthesis() {
                         u.pitch = 1.0;
                         u.volume = 1.0;
                         u.lang = 'en-US';
-                        console.log('🔊 Web Speech API speaking:', text);
                         window.speechSynthesis.speak(u);
-                    } catch (e) { 
-                        console.error('Web TTS speak failed', e); 
-                    }
+                    } catch (e) { console.warn('Web TTS speak failed', e); }
                 },
                 cancel: function() { try { window.speechSynthesis.cancel(); } catch(e){} },
-                isSpeaking: function() { 
-                    try { 
-                        return !!window.speechSynthesis && window.speechSynthesis.speaking; 
-                    } catch(e) { 
-                        return false; 
-                    } 
-                }
+                isSpeaking: function() { try { return !!window.speechSynthesis && window.speechSynthesis.speaking; } catch(e) { return false; } }
+            };
+        }
+
+        if (window.AndroidTTS && typeof window.AndroidTTS.speak === 'function') {
+            return {
+                speak: function(text) { try { window.AndroidTTS.speak(text); } catch(e) { console.warn('AndroidTTS.speak failed', e); } },
+                cancel: function() { try { window.AndroidTTS.cancel(); } catch(e) {} },
+                isSpeaking: function() { try { return !!window.AndroidTTS && window.AndroidTTS.isSpeaking && window.AndroidTTS.isSpeaking() === true; } catch(e) { return false; } }
             };
         }
     } catch (e) {
-        console.error('getSynthesis error', e);
+        console.warn('getSynthesis error', e);
     }
 
-    console.warn('⚠️ No TTS engine available');
     return {
         speak: function(text) { console.warn('No TTS available for:', text); },
         cancel: function() {},
@@ -4163,37 +4140,6 @@ function speak(text) {
         let commandExecuted = false;
         let responseText = "";
 
-        // Helper function to find device by name (fuzzy matching)
-        const findDeviceByName = (name, type = null) => {
-            if (!name) return null;
-            const searchName = name.toLowerCase().trim();
-            
-            // Try exact match first
-            let device = appliances.find(app => 
-                (!type || app.type === type) && 
-                app.name.toLowerCase() === searchName
-            );
-            
-            // Try partial match
-            if (!device) {
-                device = appliances.find(app => 
-                    (!type || app.type === type) && 
-                    (app.name.toLowerCase().includes(searchName) || searchName.includes(app.name.toLowerCase()))
-                );
-            }
-            
-            return device;
-        };
-        
-        // Helper function to extract device name from transcript
-        const extractDeviceName = (transcript, action) => {
-            // Remove common command words
-            let devicePart = transcript.replace(action, '').trim();
-            devicePart = devicePart.replace(/^(the|my|)\s*/i, '');
-            devicePart = devicePart.replace(/\s+(please|now)$/i, '');
-            return devicePart.trim();
-        };
-
         // NEW LOGIC: If system is locked, only allow "stop alarm" command
         if (isSystemLocked) {
             if (transcript.includes("stop alarm") || transcript.includes("silence alarm")) {
@@ -4223,7 +4169,7 @@ function speak(text) {
         // Original command processing continues here for unlocked system or "stop alarm" while locked
 
         // All lights control
-        if (transcript.includes("turn on all") || transcript.includes("all lights on") || transcript.includes("switch on all")) {
+        if (transcript.includes("turn on all") || transcript.includes("all lights on")) {
             for (let i = 1; i <= NUM_LIGHTS; i++) {
                 publishMessage(`homeautomation/project/light/${i}/set`, "ON");
             }
@@ -4232,7 +4178,7 @@ function speak(text) {
             speak(responseText);
             commandExecuted = true;
             
-        } else if (transcript.includes("turn off all") || transcript.includes("all lights off") || transcript.includes("switch off all")) {
+        } else if (transcript.includes("turn off all") || transcript.includes("all lights off")) {
             for (let i = 1; i <= NUM_LIGHTS; i++) {
                 publishMessage(`homeautomation/project/light/${i}/set`, "OFF");
             }
@@ -4242,199 +4188,92 @@ function speak(text) {
             commandExecuted = true;
             
         } 
-        // Individual light control - Support both numbered and named devices
-        else if ((transcript.match(/turn on|switch on|enable|start|on/) && (transcript.includes("light") || transcript.includes("lamp"))) ||
-                 (transcript.includes("light") && transcript.includes("on") && !transcript.includes("off"))) {
-            let device = null;
+        // Individual light control
+        else if (transcript.match(/turn on light ([1-4])/)) {
+            const lightNum = transcript.match(/turn on light ([1-4])/)[1];
+            publishMessage(`homeautomation/project/light/${lightNum}/set`, "ON");
+            addLog(`Voice: Turn ON light ${lightNum}`, 'voice-command');
+            responseText = `Turning on light ${lightNum}`;
+            speak(responseText);
+            commandExecuted = true;
             
-            // Try numbered command first (e.g., "turn on light 1")
-            const numMatch = transcript.match(/(?:light|lamp)\s*([1-4])/);
-            if (numMatch) {
-                const lightNum = parseInt(numMatch[1]);
-                device = appliances.find(app => app.type === 'light' && app.deviceId === lightNum);
-            }
-            
-            // If not found, try device name matching
-            if (!device) {
-                const deviceName = extractDeviceName(transcript, /turn on|switch on|enable|start|on|light|lamp/g);
-                device = findDeviceByName(deviceName, 'light');
-            }
-            
-            if (device) {
-                publishMessage(`homeautomation/project/light/${device.deviceId}/set`, "ON");
-                addLog(`Voice: Turn ON ${device.name}`, 'voice-command');
-                responseText = `Turning on ${device.name}`;
-                speak(responseText);
-                commandExecuted = true;
-            }
-            
-        } else if ((transcript.match(/turn off|switch off|disable|stop|off/) && (transcript.includes("light") || transcript.includes("lamp"))) ||
-                   (transcript.includes("light") && transcript.includes("off") && !transcript.includes(" on"))) {
-            let device = null;
-            
-            // Try numbered command first
-            const numMatch = transcript.match(/(?:light|lamp)\s*([1-4])/);
-            if (numMatch) {
-                const lightNum = parseInt(numMatch[1]);
-                device = appliances.find(app => app.type === 'light' && app.deviceId === lightNum);
-            }
-            
-            // If not found, try device name matching
-            if (!device) {
-                const deviceName = extractDeviceName(transcript, /turn off|switch off|disable|stop|off|light|lamp/g);
-                device = findDeviceByName(deviceName, 'light');
-            }
-            
-            if (device) {
-                publishMessage(`homeautomation/project/light/${device.deviceId}/set`, "OFF");
-                addLog(`Voice: Turn OFF ${device.name}`, 'voice-command');
-                responseText = `Turning off ${device.name}`;
-                speak(responseText);
-                commandExecuted = true;
-            }
+        } else if (transcript.match(/turn off light ([1-4])/)) {
+            const lightNum = transcript.match(/turn off light ([1-4])/)[1];
+            publishMessage(`homeautomation/project/light/${lightNum}/set`, "OFF");
+            addLog(`Voice: Turn OFF light ${lightNum}`, 'voice-command');
+            responseText = `Turning off light ${lightNum}`;
+            speak(responseText);
+            commandExecuted = true;
         }
         // Fan control with speed
         else if (transcript.match(/set fan.*speed|fan.*speed.*to|fan.*percent/)) {
-            let device = null;
+            // Extract fan number and speed
+            const fanMatch = transcript.match(/fan ([1-2])/);
+            const speedMatch = transcript.match(/(\d+)\s*(?:percent|%)/);
             
-            // Extract fan number from transcript
-            const fanMatch = transcript.match(/fan\s*([1-2])/);
-            let speedMatch = transcript.match(/(\d+)\s*(?:percent|%)/);
-            
-            if (fanMatch) {
-                const fanNum = parseInt(fanMatch[1]);
-                device = appliances.find(app => app.type === 'fan' && app.deviceId === fanNum);
-            } else {
-                // Try to match by device name
-                const deviceName = extractDeviceName(transcript, /set|speed|to|percent|%/g);
-                device = findDeviceByName(deviceName, 'fan');
-            }
-            
+            const fanNum = fanMatch ? fanMatch[1] : '1';
             let speed = speedMatch ? parseInt(speedMatch[1]) : null;
             
-            if (device && speed !== null) {
+            if (speed !== null) {
                 // Clamp speed between 0-100
                 speed = Math.max(0, Math.min(100, speed));
-                publishMessage(`homeautomation/project/fan/${device.deviceId}/set`, speed.toString());
-                addLog(`Voice: Set ${device.name} to ${speed}%`, 'voice-command');
-                responseText = `Setting ${device.name} to ${speed} percent`;
+                publishMessage(`homeautomation/project/fan/${fanNum}/set`, speed.toString());
+                addLog(`Voice: Set fan ${fanNum} to ${speed}%`, 'voice-command');
+                responseText = `Setting fan ${fanNum} to ${speed} percent`;
                 speak(responseText);
                 commandExecuted = true;
-            } else if (device && speed === null) {
-                responseText = `Please specify the speed percentage for ${device.name}`;
-                speak(responseText);
+            } else {
+                responseText = "Please specify the speed percentage";
                 commandExecuted = true;
             }
         }
-        // Fan speed presets with device name support
+        // Fan speed presets
         else if (transcript.match(/fan.*(low|slow)/)) {
-            let device = null;
-            const fanMatch = transcript.match(/fan\s*([1-2])/);
-            
-            if (fanMatch) {
-                const fanNum = parseInt(fanMatch[1]);
-                device = appliances.find(app => app.type === 'fan' && app.deviceId === fanNum);
-            } else {
-                const deviceName = extractDeviceName(transcript, /low|slow/g);
-                device = findDeviceByName(deviceName, 'fan');
-                // Fallback to first fan if no specific device found
-                if (!device) device = appliances.find(app => app.type === 'fan');
-            }
-            
-            if (device) {
-                publishMessage(`homeautomation/project/fan/${device.deviceId}/set`, "25");
-                addLog(`Voice: Set ${device.name} to low speed`, 'voice-command');
-                responseText = `Setting ${device.name} to low speed`;
-                speak(responseText);
-                commandExecuted = true;
-            }
+            const fanMatch = transcript.match(/fan ([1-2])/);
+            const fanNum = fanMatch ? fanMatch[1] : '1';
+            publishMessage(`homeautomation/project/fan/${fanNum}/set`, "25");
+            addLog(`Voice: Set fan ${fanNum} to low speed`, 'voice-command');
+            responseText = `Setting fan ${fanNum} to low speed`;
+            speak(responseText);
+            commandExecuted = true;
+            commandExecuted = true;
             
         } else if (transcript.match(/fan.*(medium|mid)/)) {
-            let device = null;
-            const fanMatch = transcript.match(/fan\s*([1-2])/);
-            
-            if (fanMatch) {
-                const fanNum = parseInt(fanMatch[1]);
-                device = appliances.find(app => app.type === 'fan' && app.deviceId === fanNum);
-            } else {
-                const deviceName = extractDeviceName(transcript, /medium|mid/g);
-                device = findDeviceByName(deviceName, 'fan');
-                if (!device) device = appliances.find(app => app.type === 'fan');
-            }
-            
-            if (device) {
-                publishMessage(`homeautomation/project/fan/${device.deviceId}/set`, "50");
-                addLog(`Voice: Set ${device.name} to medium speed`, 'voice-command');
-                responseText = `Setting ${device.name} to medium speed`;
-                speak(responseText);
-                commandExecuted = true;
-            }
+            const fanMatch = transcript.match(/fan ([1-2])/);
+            const fanNum = fanMatch ? fanMatch[1] : '1';
+            publishMessage(`homeautomation/project/fan/${fanNum}/set`, "50");
+            addLog(`Voice: Set fan ${fanNum} to medium speed`, 'voice-command');
+            responseText = `Setting fan ${fanNum} to medium speed`;
+            speak(responseText);
+            commandExecuted = true;
             
         } else if (transcript.match(/fan.*(high|fast|max|full)/)) {
-            let device = null;
-            const fanMatch = transcript.match(/fan\s*([1-2])/);
-            
-            if (fanMatch) {
-                const fanNum = parseInt(fanMatch[1]);
-                device = appliances.find(app => app.type === 'fan' && app.deviceId === fanNum);
-            } else {
-                const deviceName = extractDeviceName(transcript, /high|fast|max|full/g);
-                device = findDeviceByName(deviceName, 'fan');
-                if (!device) device = appliances.find(app => app.type === 'fan');
-            }
-            
-            if (device) {
-                publishMessage(`homeautomation/project/fan/${device.deviceId}/set`, "100");
-                addLog(`Voice: Set ${device.name} to high speed`, 'voice-command');
-                responseText = `Setting ${device.name} to high speed`;
-                speak(responseText);
-                commandExecuted = true;
-            }
+            const fanMatch = transcript.match(/fan ([1-2])/);
+            const fanNum = fanMatch ? fanMatch[1] : '1';
+            publishMessage(`homeautomation/project/fan/${fanNum}/set`, "100");
+            addLog(`Voice: Set fan ${fanNum} to high speed`, 'voice-command');
+            responseText = `Setting fan ${fanNum} to high speed`;
+            speak(responseText);
+            commandExecuted = true;
         }
-        // Fan on/off with device name support
-        else if ((transcript.match(/turn on|switch on|start|enable|on/) && transcript.includes("fan")) ||
-                 (transcript.includes("fan") && transcript.includes("on") && !transcript.includes("off"))) {
-            let device = null;
-            const fanMatch = transcript.match(/fan\s*([1-2])/);
+        // Fan on/off (keep original commands)
+        else if (transcript.includes("turn on fan") || transcript.includes("fan on")) {
+            const fanMatch = transcript.match(/fan ([1-2])/);
+            const fanNum = fanMatch ? fanMatch[1] : '1';
+            publishMessage(`homeautomation/project/fan/${fanNum}/set`, "75");
+            addLog(`Voice: Turn ON fan ${fanNum}`, 'voice-command');
+            responseText = `Turning on fan ${fanNum}`;
+            speak(responseText);
+            commandExecuted = true;
             
-            if (fanMatch) {
-                const fanNum = parseInt(fanMatch[1]);
-                device = appliances.find(app => app.type === 'fan' && app.deviceId === fanNum);
-            } else {
-                const deviceName = extractDeviceName(transcript, /turn on|switch on|start|enable|on|fan/g);
-                device = findDeviceByName(deviceName, 'fan');
-                if (!device) device = appliances.find(app => app.type === 'fan');
-            }
-            
-            if (device) {
-                publishMessage(`homeautomation/project/fan/${device.deviceId}/set`, "75");
-                addLog(`Voice: Turn ON ${device.name}`, 'voice-command');
-                responseText = `Turning on ${device.name}`;
-                speak(responseText);
-                commandExecuted = true;
-            }
-            
-        } else if ((transcript.match(/turn off|switch off|stop|disable|off/) && transcript.includes("fan")) ||
-                   (transcript.includes("fan") && transcript.includes("off") && !transcript.includes(" on"))) {
-            let device = null;
-            const fanMatch = transcript.match(/fan\s*([1-2])/);
-            
-            if (fanMatch) {
-                const fanNum = parseInt(fanMatch[1]);
-                device = appliances.find(app => app.type === 'fan' && app.deviceId === fanNum);
-            } else {
-                const deviceName = extractDeviceName(transcript, /turn off|switch off|stop|disable|off|fan/g);
-                device = findDeviceByName(deviceName, 'fan');
-                if (!device) device = appliances.find(app => app.type === 'fan');
-            }
-            
-            if (device) {
-                publishMessage(`homeautomation/project/fan/${device.deviceId}/set`, "0");
-                addLog(`Voice: Turn OFF ${device.name}`, 'voice-command');
-                responseText = `Turning off ${device.name}`;
-                speak(responseText);
-                commandExecuted = true;
-            }
+        } else if (transcript.includes("turn off fan") || transcript.includes("fan off")) {
+            const fanMatch = transcript.match(/fan ([1-2])/);
+            const fanNum = fanMatch ? fanMatch[1] : '1';
+            publishMessage(`homeautomation/project/fan/${fanNum}/set`, "0");
+            addLog(`Voice: Turn OFF fan ${fanNum}`, 'voice-command');
+            responseText = `Turning off fan ${fanNum}`;
+            speak(responseText);
+            commandExecuted = true;
         }
         // Temperature and sensor queries
         else if (transcript.includes("what is the temperature") || transcript.includes("temperature")) {
@@ -4487,7 +4326,7 @@ function speak(text) {
             }
         }
         // Sensor Data Query
-        else if (transcript.includes("gas") && (transcript.includes("level") || transcript.includes("what") || transcript.includes("show"))) {
+        else if (transcript.includes("what is the gas level") || transcript.includes("gas level")) {
             const gasElement = document.getElementById('sensor-gas');
             if (gasElement && gasElement.textContent && gasElement.textContent !== '--%') {
                 const gas = gasElement.textContent;
@@ -4497,10 +4336,9 @@ function speak(text) {
                 responseText = "Gas level data is not available yet";
                 console.warn("⚠️ Gas element not found or no data");
             }
-            speak(responseText);
             commandExecuted = true;
         }
-        else if (transcript.includes("motion") && (transcript.includes("status") || transcript.includes("detect") || transcript.includes("any"))) {
+        else if (transcript.includes("show me motion status") || transcript.includes("is there any motion") || transcript.includes("motion status")) {
             const motionElement = document.getElementById('sensor-motion');
             if (motionElement && motionElement.textContent) {
                 const motionStatus = motionElement.textContent;
@@ -4510,10 +4348,9 @@ function speak(text) {
                 responseText = "Motion sensor data is not available yet";
                 console.warn("⚠️ Motion element not found or no data");
             }
-            speak(responseText);
             commandExecuted = true;
         }
-        else if (transcript.includes("power") && (transcript.includes("consumption") || transcript.includes("usage") || transcript.includes("using"))) {
+        else if (transcript.includes("what is the current power consumption") || transcript.includes("power consumption")) {
             const powerElement = document.getElementById('pzem-power');
             if (powerElement && powerElement.textContent && powerElement.textContent !== '-- W') {
                 const power = powerElement.textContent;
@@ -4523,10 +4360,9 @@ function speak(text) {
                 responseText = "Power consumption data is not available yet";
                 console.warn("⚠️ Power element not found or no data");
             }
-            speak(responseText);
             commandExecuted = true;
         }
-        else if (transcript.includes("voltage") || (transcript.includes("volt") && (transcript.includes("what") || transcript.includes("current")))) {
+        else if (transcript.includes("what is the current voltage") || transcript.includes("current voltage")) {
             const voltageElement = document.getElementById('pzem-voltage');
             if (voltageElement && voltageElement.textContent && voltageElement.textContent !== '-- V') {
                 const voltage = voltageElement.textContent;
@@ -4536,40 +4372,14 @@ function speak(text) {
                 responseText = "Voltage data is not available yet";
                 console.warn("⚠️ Voltage element not found or no data");
             }
-            speak(responseText);
-            commandExecuted = true;
-        }
-        else if (transcript.includes("current") && (transcript.includes("amp") || transcript.includes("draw"))) {
-            const currentElement = document.getElementById('pzem-current');
-            if (currentElement && currentElement.textContent && currentElement.textContent !== '-- A') {
-                const current = currentElement.textContent;
-                responseText = `The current draw is ${current}`;
-                console.log(`⚡ Current: ${current}`);
-            } else {
-                responseText = "Current data is not available yet";
-                console.warn("⚠️ Current element not found or no data");
-            }
-            speak(responseText);
-            commandExecuted = true;
-        }
-        else if (transcript.includes("energy") && (transcript.includes("total") || transcript.includes("consumed") || transcript.includes("used"))) {
-            const energyElement = document.getElementById('pzem-energy');
-            if (energyElement && energyElement.textContent && energyElement.textContent !== '-- kWh') {
-                const energy = energyElement.textContent;
-                responseText = `The total energy consumed is ${energy}`;
-                console.log(`⚡ Energy: ${energy}`);
-            } else {
-                responseText = "Energy data is not available yet";
-                console.warn("⚠️ Energy element not found or no data");
-            }
-            speak(responseText);
             commandExecuted = true;
         }
         
-        // Provide feedback only if no response was already given
-        if (commandExecuted && responseText) {
+        // Provide feedback
+        if (commandExecuted) {
+            speak(responseText);
             showToast(responseText, "success");
-        } else if (!commandExecuted) {
+        } else {
             responseText = "Sorry, I didn't understand that command";
             speak(responseText);
             showToast(responseText, "error");
@@ -7147,90 +6957,6 @@ function changeSensorTimeRange(hours) {
     }
 }
 
-// Export sensor data to Excel
-async function exportSensorData() {
-    if (!realtimeDb) {
-        showToast("Firebase not ready", "error");
-        return;
-    }
-    
-    try {
-        showToast("Preparing Excel file...", "info");
-        
-        const { dbRef, get } = window.firebaseModules;
-        const historyRef = dbRef(realtimeDb, 'sensors/history');
-        const snapshot = await get(historyRef);
-        
-        if (!snapshot.exists()) {
-            showToast("No data available", "warning");
-            return;
-        }
-        
-        const data = snapshot.val();
-        const dataArray = Object.values(data);
-        
-        // Filter by current time range
-        let filteredData;
-        if (currentSensorTimeRange === -1) {
-            // ALL data
-            filteredData = dataArray;
-        } else {
-            const now = Date.now();
-            const startTime = now - (currentSensorTimeRange * 60 * 60 * 1000);
-            filteredData = dataArray.filter(d => d.timestamp >= startTime && d.timestamp <= now);
-        }
-        
-        if (filteredData.length === 0) {
-            showToast("No data in selected time range", "warning");
-            return;
-        }
-        
-        // Sort by timestamp
-        const sortedData = filteredData.sort((a, b) => a.timestamp - b.timestamp);
-        
-        // Prepare data for Excel
-        const excelData = sortedData.map(record => ({
-            'Timestamp': new Date(record.timestamp).toLocaleString(),
-            'Temperature (°C)': parseFloat(record.temperature || 0).toFixed(2),
-            'Humidity (%)': parseFloat(record.humidity || 0).toFixed(2),
-            'Gas Level (0-1024)': parseInt(record.gasLevel || 0),
-            'Gas Alarm': record.gasAlarm ? 'DETECTED' : 'CLEAR',
-            'Motion': record.motion ? 'DETECTED' : 'NONE'
-        }));
-        
-        // Create workbook
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(excelData);
-        
-        // Set column widths
-        ws['!cols'] = [
-            { wch: 20 }, // Timestamp
-            { wch: 15 }, // Temperature
-            { wch: 15 }, // Humidity
-            { wch: 15 }, // Gas Level
-            { wch: 12 }, // Gas Alarm
-            { wch: 12 }  // Motion
-        ];
-        
-        XLSX.utils.book_append_sheet(wb, ws, 'Sensor Data');
-        
-        // Generate filename with date range
-        const timeRangeLabel = currentSensorTimeRange === -1 ? 'ALL' : 
-                              (currentSensorTimeRange >= 24 ? `${currentSensorTimeRange/24}D` : `${currentSensorTimeRange}H`);
-        const filename = `SensorData_${timeRangeLabel}_${new Date().toISOString().split('T')[0]}.xlsx`;
-        
-        // Download file
-        XLSX.writeFile(wb, filename);
-        
-        showToast(`Downloaded ${sortedData.length} records`, "success");
-        addLog(`📥 Sensor data exported (${sortedData.length} records)`, 'system');
-        
-    } catch (error) {
-        console.error('Error exporting sensor data:', error);
-        showToast("Export failed: " + error.message, "error");
-    }
-}
-
 // ========== PZEM ANALYTICS FUNCTIONS ==========
 
 // Initialize PZEM charts
@@ -7826,187 +7552,707 @@ function changePZEMTimeRange(hours) {
     }
 }
 
-// Export PZEM data to Excel
-async function exportPZEMData() {
-    if (!realtimeDb) {
-        showToast("Firebase not ready", "error");
-        return;
-    }
+// ========== END PZEM ANALYTICS FUNCTIONS ==========
+
+// ========== PDF EXPORT FUNCTIONS FOR ANALYTICS ==========
+
+// Get time range label
+function getTimeRangeLabel(hours) {
+    if (hours === -1) return 'All Time';
+    if (hours === 1) return 'Last 1 Hour';
+    if (hours === 6) return 'Last 6 Hours';
+    if (hours === 24) return 'Last 24 Hours';
+    if (hours === 168) return 'Last 7 Days';
+    if (hours === 720) return 'Last 30 Days';
+    if (hours === 8760) return 'Last 365 Days';
+    return `Last ${hours} Hours`;
+}
+
+// Export Sensor Analytics to PDF with charts and data
+async function exportSensorAnalyticsToPDF() {
+    showToast("Generating Sensor Analytics PDF...", "info");
     
     try {
-        showToast("Preparing Excel file...", "info");
+        const date = new Date().toISOString().split('T')[0];
+        const time = new Date().toLocaleTimeString();
+        const timeRangeLabel = getTimeRangeLabel(currentSensorTimeRange);
         
-        const { dbRef, get } = window.firebaseModules;
-        const historyRef = dbRef(realtimeDb, 'powerMonitor/history');
-        const snapshot = await get(historyRef);
+        // Capture chart images as base64
+        let tempChartImage = '';
+        let humidityChartImage = '';
+        let gasChartImage = '';
         
-        if (!snapshot.exists()) {
-            showToast("No data available", "warning");
+        if (tempHistoryChart) {
+            tempChartImage = tempHistoryChart.toBase64Image('image/png', 1);
+        }
+        if (humidityHistoryChart) {
+            humidityChartImage = humidityHistoryChart.toBase64Image('image/png', 1);
+        }
+        if (gasHistoryChart) {
+            gasChartImage = gasHistoryChart.toBase64Image('image/png', 1);
+        }
+        
+        // Get statistics from DOM
+        const tempMin = document.getElementById('temp-min')?.textContent || '--°C';
+        const tempMax = document.getElementById('temp-max')?.textContent || '--°C';
+        const tempAvg = document.getElementById('temp-avg')?.textContent || '--°C';
+        const humidMin = document.getElementById('humidity-min')?.textContent || '--%';
+        const humidMax = document.getElementById('humidity-max')?.textContent || '--%';
+        const humidAvg = document.getElementById('humidity-avg')?.textContent || '--%';
+        const motionCount = document.getElementById('motion-count')?.textContent || '0';
+        
+        // Get chart data for table
+        let dataTableRows = '';
+        let dataCount = 0;
+        
+        if (tempHistoryChart && tempHistoryChart.data.labels.length > 0) {
+            const labels = tempHistoryChart.data.labels;
+            const tempData = tempHistoryChart.data.datasets[0].data;
+            const humidData = humidityHistoryChart?.data.datasets[0].data || [];
+            const gasData = gasHistoryChart?.data.datasets[0].data || [];
+            
+            dataCount = labels.length;
+            
+            // Sample data if too many records (max 100 for PDF)
+            const sampleRate = Math.max(1, Math.floor(labels.length / 100));
+            
+            for (let i = 0; i < labels.length; i += sampleRate) {
+                const timestamp = new Date(labels[i]).toLocaleString('en-IN', {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+                dataTableRows += `
+                    <tr style="${i % 2 === 0 ? 'background-color: #f8fafc;' : ''}">
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">${timestamp}</td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center; color: #dc2626;">${(tempData[i] || 0).toFixed(1)}°C</td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center; color: #2563eb;">${(humidData[i] || 0).toFixed(1)}%</td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center; color: #059669;">${(gasData[i] || 0).toFixed(1)}%</td>
+                    </tr>
+                `;
+            }
+        }
+        
+        // Create HTML content for PDF
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Smart Home Sensor Analytics Report</title>
+                <style>
+                    @media print {
+                        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                        .page-break { page-break-before: always; }
+                    }
+                    * { box-sizing: border-box; margin: 0; padding: 0; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; background: #ffffff; color: #1f2937; line-height: 1.5; }
+                    .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+                    .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; }
+                    .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+                    .header-meta { display: flex; flex-wrap: wrap; gap: 20px; font-size: 13px; opacity: 0.9; }
+                    .section { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+                    .section-title { font-size: 18px; font-weight: 600; color: #4f46e5; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; display: flex; align-items: center; gap: 8px; }
+                    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+                    .stat-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0; }
+                    .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+                    .stat-value { font-size: 24px; font-weight: 700; }
+                    .stat-value.blue { color: #2563eb; }
+                    .stat-value.red { color: #dc2626; }
+                    .stat-value.green { color: #059669; }
+                    .stat-value.purple { color: #7c3aed; }
+                    .chart-container { margin-bottom: 24px; background: #fafafa; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
+                    .chart-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+                    .chart-img { width: 100%; max-width: 100%; height: auto; border-radius: 6px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+                    th { background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color: white; padding: 12px; font-size: 12px; font-weight: 600; text-align: left; }
+                    th:first-child { border-radius: 8px 0 0 0; }
+                    th:last-child { border-radius: 0 8px 0 0; }
+                    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 11px; border-top: 1px solid #e5e7eb; margin-top: 30px; }
+                    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+                    .badge-primary { background: rgba(255,255,255,0.2); color: white; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <!-- Header -->
+                    <div class="header">
+                        <h1>📊 Sensor Analytics Report</h1>
+                        <div class="header-meta">
+                            <span>🏠 Smart Home Automation System</span>
+                            <span>📅 ${date}</span>
+                            <span>🕐 ${time}</span>
+                            <span class="badge badge-primary">⏱️ ${timeRangeLabel}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics Summary -->
+                    <div class="section">
+                        <div class="section-title">📈 Statistics Summary</div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-label">🌡️ Min Temperature</div>
+                                <div class="stat-value blue">${tempMin}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">🌡️ Max Temperature</div>
+                                <div class="stat-value red">${tempMax}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">🌡️ Avg Temperature</div>
+                                <div class="stat-value green">${tempAvg}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">💧 Min Humidity</div>
+                                <div class="stat-value blue">${humidMin}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">💧 Max Humidity</div>
+                                <div class="stat-value red">${humidMax}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">💧 Avg Humidity</div>
+                                <div class="stat-value green">${humidAvg}</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center; padding: 16px; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border-radius: 10px; border: 1px solid #e9d5ff;">
+                            <div class="stat-label">🚶 Motion Detections</div>
+                            <div class="stat-value purple" style="font-size: 32px;">${motionCount}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Temperature Chart -->
+                    <div class="section">
+                        <div class="section-title">🌡️ Temperature History</div>
+                        <div class="chart-container">
+                            ${tempChartImage ? `<img src="${tempChartImage}" class="chart-img" alt="Temperature Chart">` : '<p style="text-align:center; color:#94a3b8;">No chart data available</p>'}
+                        </div>
+                    </div>
+                    
+                    <!-- Humidity Chart -->
+                    <div class="section">
+                        <div class="section-title">💧 Humidity History</div>
+                        <div class="chart-container">
+                            ${humidityChartImage ? `<img src="${humidityChartImage}" class="chart-img" alt="Humidity Chart">` : '<p style="text-align:center; color:#94a3b8;">No chart data available</p>'}
+                        </div>
+                    </div>
+                    
+                    <!-- Gas Level Chart -->
+                    <div class="section">
+                        <div class="section-title">💨 Gas Level History</div>
+                        <div class="chart-container">
+                            ${gasChartImage ? `<img src="${gasChartImage}" class="chart-img" alt="Gas Level Chart">` : '<p style="text-align:center; color:#94a3b8;">No chart data available</p>'}
+                        </div>
+                    </div>
+                    
+                    <!-- Data Table -->
+                    <div class="section page-break">
+                        <div class="section-title">📋 Sensor Data Table (${dataCount} records${dataCount > 100 ? ', sampled' : ''})</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 35%;">Timestamp</th>
+                                    <th style="width: 20%; text-align: center;">Temperature</th>
+                                    <th style="width: 20%; text-align: center;">Humidity</th>
+                                    <th style="width: 25%; text-align: center;">Gas Level</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${dataTableRows || '<tr><td colspan="4" style="text-align:center; padding:20px; color:#94a3b8;">No data available</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="footer">
+                        <p>Generated by Smart Home Automation System • InfiniSync v3.0</p>
+                        <p>© ${new Date().getFullYear()} All Rights Reserved</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        // Open print window
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showToast("Please allow popups to download PDF", "error");
             return;
         }
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
         
-        const data = snapshot.val();
-        const dataArray = Object.values(data);
-        
-        // Filter by current time range
-        let filteredData;
-        if (currentPZEMTimeRange === -1) {
-            // ALL data
-            filteredData = dataArray;
-        } else {
-            const now = Date.now();
-            const startTime = now - (currentPZEMTimeRange * 60 * 60 * 1000);
-            filteredData = dataArray.filter(d => d.timestamp >= startTime && d.timestamp <= now);
-        }
-        
-        if (filteredData.length === 0) {
-            showToast("No data in selected time range", "warning");
-            return;
-        }
-        
-        // Sort by timestamp
-        const sortedData = filteredData.sort((a, b) => a.timestamp - b.timestamp);
-        
-        // Prepare data for Excel
-        const excelData = sortedData.map(record => ({
-            'Timestamp': new Date(record.timestamp).toLocaleString(),
-            'Voltage (V)': parseFloat(record.voltage || 0).toFixed(2),
-            'Current (A)': parseFloat(record.current || 0).toFixed(3),
-            'Power (W)': parseFloat(record.power || 0).toFixed(2),
-            'Energy (kWh)': parseFloat(record.energy || 0).toFixed(3),
-            'Frequency (Hz)': parseFloat(record.frequency || 0).toFixed(2),
-            'Power Factor': parseFloat(record.powerFactor || 0).toFixed(3)
-        }));
-        
-        // Create workbook
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(excelData);
-        
-        // Set column widths
-        ws['!cols'] = [
-            { wch: 20 }, // Timestamp
-            { wch: 12 }, // Voltage
-            { wch: 12 }, // Current
-            { wch: 12 }, // Power
-            { wch: 14 }, // Energy
-            { wch: 14 }, // Frequency
-            { wch: 14 }  // Power Factor
-        ];
-        
-        XLSX.utils.book_append_sheet(wb, ws, 'Power Monitor Data');
-        
-        // Calculate statistics for summary sheet
-        const avgVoltage = (sortedData.reduce((sum, r) => sum + (r.voltage || 0), 0) / sortedData.length).toFixed(2);
-        const avgCurrent = (sortedData.reduce((sum, r) => sum + (r.current || 0), 0) / sortedData.length).toFixed(3);
-        const avgPower = (sortedData.reduce((sum, r) => sum + (r.power || 0), 0) / sortedData.length).toFixed(2);
-        const maxPower = Math.max(...sortedData.map(r => r.power || 0)).toFixed(2);
-        const totalEnergy = (sortedData[sortedData.length - 1]?.energy || 0).toFixed(3);
-        
-        const summaryData = [
-            { 'Metric': 'Average Voltage', 'Value': avgVoltage + ' V' },
-            { 'Metric': 'Average Current', 'Value': avgCurrent + ' A' },
-            { 'Metric': 'Average Power', 'Value': avgPower + ' W' },
-            { 'Metric': 'Peak Power', 'Value': maxPower + ' W' },
-            { 'Metric': 'Total Energy', 'Value': totalEnergy + ' kWh' },
-            { 'Metric': 'Total Records', 'Value': sortedData.length },
-            { 'Metric': 'Time Range', 'Value': currentPZEMTimeRange === -1 ? 'ALL' : (currentPZEMTimeRange >= 24 ? `${currentPZEMTimeRange/24} Days` : `${currentPZEMTimeRange} Hours`) },
-            { 'Metric': 'Export Date', 'Value': new Date().toLocaleString() }
-        ];
-        
-        const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-        wsSummary['!cols'] = [{ wch: 20 }, { wch: 20 }];
-        XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
-        
-        // Generate filename with date range
-        const timeRangeLabel = currentPZEMTimeRange === -1 ? 'ALL' : 
-                              (currentPZEMTimeRange >= 24 ? `${currentPZEMTimeRange/24}D` : `${currentPZEMTimeRange}H`);
-        const filename = `PowerMonitor_${timeRangeLabel}_${new Date().toISOString().split('T')[0]}.xlsx`;
-        
-        // Download file
-        XLSX.writeFile(wb, filename);
-        
-        showToast(`Downloaded ${sortedData.length} records`, "success");
-        addLog(`📥 Power monitor data exported (${sortedData.length} records)`, 'system');
+        setTimeout(() => {
+            printWindow.focus();
+            printWindow.print();
+            showToast("PDF export ready - use Print to PDF option", "success");
+        }, 800);
         
     } catch (error) {
-        console.error('Error exporting PZEM data:', error);
-        showToast("Export failed: " + error.message, "error");
+        console.error('Error exporting sensor analytics PDF:', error);
+        showToast("Error generating PDF: " + error.message, "error");
     }
 }
 
-// ========== END PZEM ANALYTICS FUNCTIONS ==========
+// Export PZEM Analytics to PDF with charts and data
+async function exportPZEMAnalyticsToPDF() {
+    showToast("Generating Power Analytics PDF...", "info");
+    
+    try {
+        const date = new Date().toISOString().split('T')[0];
+        const time = new Date().toLocaleTimeString();
+        const timeRangeLabel = getTimeRangeLabel(currentPZEMTimeRange);
+        
+        // Capture chart images as base64
+        let powerChartImage = '';
+        let voltageChartImage = '';
+        let currentChartImage = '';
+        let energyChartImage = '';
+        
+        if (powerHistoryChart) {
+            powerChartImage = powerHistoryChart.toBase64Image('image/png', 1);
+        }
+        if (voltageHistoryChart) {
+            voltageChartImage = voltageHistoryChart.toBase64Image('image/png', 1);
+        }
+        if (currentHistoryChart) {
+            currentChartImage = currentHistoryChart.toBase64Image('image/png', 1);
+        }
+        if (energyHistoryChart) {
+            energyChartImage = energyHistoryChart.toBase64Image('image/png', 1);
+        }
+        
+        // Get statistics from DOM
+        const peakPower = document.getElementById('pzem-peak-power')?.textContent || '-- W';
+        const peakTime = document.getElementById('pzem-peak-time')?.textContent || '--';
+        const avgPower = document.getElementById('pzem-avg-power')?.textContent || '-- W';
+        const totalEnergy = document.getElementById('pzem-total-energy')?.textContent || '-- kWh';
+        const energyCost = document.getElementById('pzem-energy-cost')?.textContent || '₹ --';
+        const runtime = document.getElementById('pzem-runtime')?.textContent || '-- hrs';
+        
+        // Get chart data for table
+        let dataTableRows = '';
+        let dataCount = 0;
+        
+        if (powerHistoryChart && powerHistoryChart.data.labels.length > 0) {
+            const labels = powerHistoryChart.data.labels;
+            const powerData = powerHistoryChart.data.datasets[0].data;
+            const voltageData = voltageHistoryChart?.data.datasets[0].data || [];
+            const currentData = currentHistoryChart?.data.datasets[0].data || [];
+            const energyData = energyHistoryChart?.data.datasets[0].data || [];
+            
+            dataCount = labels.length;
+            
+            // Sample data if too many records (max 80 for PDF due to more columns)
+            const sampleRate = Math.max(1, Math.floor(labels.length / 80));
+            
+            for (let i = 0; i < labels.length; i += sampleRate) {
+                const timestamp = new Date(labels[i]).toLocaleString('en-IN', {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                dataTableRows += `
+                    <tr style="${i % 2 === 0 ? 'background-color: #f8fafc;' : ''}">
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px;">${timestamp}</td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; text-align: center; color: #f59e0b;">${(voltageData[i] || 0).toFixed(1)}V</td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; text-align: center; color: #3b82f6;">${(currentData[i] || 0).toFixed(3)}A</td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; text-align: center; color: #10b981; font-weight: 600;">${(powerData[i] || 0).toFixed(2)}W</td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; text-align: center; color: #8b5cf6;">${(energyData[i] || 0).toFixed(3)}kWh</td>
+                    </tr>
+                `;
+            }
+        }
+        
+        // Create HTML content for PDF
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Smart Home Power Analytics Report</title>
+                <style>
+                    @media print {
+                        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                        .page-break { page-break-before: always; }
+                    }
+                    * { box-sizing: border-box; margin: 0; padding: 0; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; background: #ffffff; color: #1f2937; line-height: 1.5; }
+                    .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+                    .header { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; }
+                    .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+                    .header-meta { display: flex; flex-wrap: wrap; gap: 20px; font-size: 13px; opacity: 0.9; }
+                    .section { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+                    .section-title { font-size: 18px; font-weight: 600; color: #059669; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; display: flex; align-items: center; gap: 8px; }
+                    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+                    .stat-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0; }
+                    .stat-card.highlight { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-color: #a7f3d0; }
+                    .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+                    .stat-value { font-size: 22px; font-weight: 700; }
+                    .stat-sub { font-size: 10px; color: #94a3b8; margin-top: 4px; }
+                    .stat-value.red { color: #dc2626; }
+                    .stat-value.blue { color: #2563eb; }
+                    .stat-value.green { color: #059669; }
+                    .stat-value.purple { color: #7c3aed; }
+                    .stat-value.amber { color: #d97706; }
+                    .chart-container { margin-bottom: 24px; background: #fafafa; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
+                    .chart-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+                    .chart-img { width: 100%; max-width: 100%; height: auto; border-radius: 6px; }
+                    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+                    th { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 10px 8px; font-size: 11px; font-weight: 600; text-align: center; }
+                    th:first-child { border-radius: 8px 0 0 0; text-align: left; }
+                    th:last-child { border-radius: 0 8px 0 0; }
+                    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 11px; border-top: 1px solid #e5e7eb; margin-top: 30px; }
+                    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+                    .badge-primary { background: rgba(255,255,255,0.2); color: white; }
+                    .cost-highlight { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #fbbf24; border-radius: 12px; padding: 20px; text-align: center; margin-top: 16px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <!-- Header -->
+                    <div class="header">
+                        <h1>⚡ Power Analytics Report</h1>
+                        <div class="header-meta">
+                            <span>🏠 Smart Home Automation System</span>
+                            <span>📅 ${date}</span>
+                            <span>🕐 ${time}</span>
+                            <span class="badge badge-primary">⏱️ ${timeRangeLabel}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics Summary -->
+                    <div class="section">
+                        <div class="section-title">📈 Power Statistics Summary</div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-label">🔥 Peak Power</div>
+                                <div class="stat-value red">${peakPower}</div>
+                                <div class="stat-sub">${peakTime}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">📊 Average Power</div>
+                                <div class="stat-value blue">${avgPower}</div>
+                                <div class="stat-sub">When active</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">⏱️ Total Runtime</div>
+                                <div class="stat-value purple">${runtime}</div>
+                                <div class="stat-sub">Active time</div>
+                            </div>
+                        </div>
+                        <div class="cost-highlight">
+                            <div class="stats-grid" style="margin-bottom: 0;">
+                                <div style="text-align: center;">
+                                    <div class="stat-label">⚡ Total Energy</div>
+                                    <div class="stat-value green" style="font-size: 28px;">${totalEnergy}</div>
+                                </div>
+                                <div style="text-align: center; grid-column: span 2;">
+                                    <div class="stat-label">💰 Estimated Cost</div>
+                                    <div class="stat-value amber" style="font-size: 32px;">${energyCost}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Power Chart -->
+                    <div class="section">
+                        <div class="section-title">⚡ Power Consumption (Watts)</div>
+                        <div class="chart-container">
+                            ${powerChartImage ? `<img src="${powerChartImage}" class="chart-img" alt="Power Chart">` : '<p style="text-align:center; color:#94a3b8;">No chart data available</p>'}
+                        </div>
+                    </div>
+                    
+                    <!-- Voltage & Current Charts (side by side) -->
+                    <div class="section">
+                        <div class="section-title">📉 Voltage & Current History</div>
+                        <div class="charts-row">
+                            <div class="chart-container" style="margin-bottom: 0;">
+                                <div class="chart-title">Voltage (V)</div>
+                                ${voltageChartImage ? `<img src="${voltageChartImage}" class="chart-img" alt="Voltage Chart">` : '<p style="text-align:center; color:#94a3b8;">No data</p>'}
+                            </div>
+                            <div class="chart-container" style="margin-bottom: 0;">
+                                <div class="chart-title">Current (A)</div>
+                                ${currentChartImage ? `<img src="${currentChartImage}" class="chart-img" alt="Current Chart">` : '<p style="text-align:center; color:#94a3b8;">No data</p>'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Energy Chart -->
+                    <div class="section">
+                        <div class="section-title">🔋 Energy Consumption (kWh)</div>
+                        <div class="chart-container">
+                            ${energyChartImage ? `<img src="${energyChartImage}" class="chart-img" alt="Energy Chart">` : '<p style="text-align:center; color:#94a3b8;">No chart data available</p>'}
+                        </div>
+                    </div>
+                    
+                    <!-- Data Table -->
+                    <div class="section page-break">
+                        <div class="section-title">📋 Power Data Table (${dataCount} records${dataCount > 80 ? ', sampled' : ''})</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 25%; text-align: left;">Timestamp</th>
+                                    <th style="width: 18%;">Voltage</th>
+                                    <th style="width: 18%;">Current</th>
+                                    <th style="width: 20%;">Power</th>
+                                    <th style="width: 19%;">Energy</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${dataTableRows || '<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">No data available</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="footer">
+                        <p>Generated by Smart Home Automation System • PZEM-004T Monitor • InfiniSync v3.0</p>
+                        <p>© ${new Date().getFullYear()} All Rights Reserved</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        // Open print window
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showToast("Please allow popups to download PDF", "error");
+            return;
+        }
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        setTimeout(() => {
+            printWindow.focus();
+            printWindow.print();
+            showToast("PDF export ready - use Print to PDF option", "success");
+        }, 800);
+        
+    } catch (error) {
+        console.error('Error exporting PZEM analytics PDF:', error);
+        showToast("Error generating PDF: " + error.message, "error");
+    }
+}
+
+// ========== END PDF EXPORT FUNCTIONS ==========
 
 // ========== END SENSOR FUNCTIONS ==========
 
-// Export logs to Excel
-function exportLogsToExcel() {
+// Export logs to PDF
+function exportLogsToPDF() {
     if (logEntries.length === 0) {
         showToast("No logs to export", "warning");
         return;
     }
     
-    try {
-        showToast("Preparing Excel file...", "info");
+    showToast("Generating Activity Logs PDF...", "info");
+    
+    const date = new Date().toISOString().split('T')[0];
+    const time = new Date().toLocaleTimeString();
+    
+    // Calculate statistics
+    const categories = {};
+    const users = {};
+    let todayCount = 0;
+    const today = new Date().toLocaleDateString();
+    
+    logEntries.forEach(entry => {
+        // Count categories
+        const cat = entry.category || 'general';
+        categories[cat] = (categories[cat] || 0) + 1;
         
-        // Prepare data for Excel
-        const excelData = logEntries.map(entry => ({
-            'Date': entry.date || new Date(entry.timestamp).toLocaleDateString(),
-            'Time': entry.time,
-            'User': entry.user || 'System',
-            'Category': entry.category || 'general',
-            'Activity': entry.text
-        }));
+        // Count users
+        if (entry.user) {
+            users[entry.user] = (users[entry.user] || 0) + 1;
+        }
         
-        // Create workbook
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(excelData);
+        // Count today's entries
+        if (entry.date === today) {
+            todayCount++;
+        }
+    });
+    
+    // Generate category stats HTML
+    const categoryColors = {
+        'general': '#6b7280',
+        'device': '#3b82f6',
+        'sensor': '#10b981',
+        'alarm': '#ef4444',
+        'system': '#8b5cf6',
+        'user': '#f59e0b',
+        'power': '#06b6d4'
+    };
+    
+    let categoryStatsHtml = '';
+    Object.entries(categories).sort((a, b) => b[1] - a[1]).slice(0, 6).forEach(([cat, count]) => {
+        const color = categoryColors[cat] || '#6b7280';
+        const percent = ((count / logEntries.length) * 100).toFixed(1);
+        categoryStatsHtml += `
+            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid ${color};">
+                <span style="font-weight: 600; color: ${color}; text-transform: capitalize; min-width: 70px;">${cat}</span>
+                <div style="flex: 1; background: #e2e8f0; border-radius: 4px; height: 8px; overflow: hidden;">
+                    <div style="width: ${percent}%; background: ${color}; height: 100%; border-radius: 4px;"></div>
+                </div>
+                <span style="font-size: 12px; color: #64748b; min-width: 60px; text-align: right;">${count} (${percent}%)</span>
+            </div>
+        `;
+    });
+    
+    // Generate log entries HTML with better styling
+    let logEntriesHtml = '';
+    
+    // Convert hex to rgba for background with opacity
+    const hexToRgba = (hex, alpha) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+    
+    logEntries.forEach((entry, index) => {
+        const cat = entry.category || 'general';
+        const catColor = categoryColors[cat] || '#6b7280';
+        const bgColor = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+        const catBgColor = hexToRgba(catColor, 0.15);
         
-        // Set column widths
-        ws['!cols'] = [
-            { wch: 12 }, // Date
-            { wch: 12 }, // Time
-            { wch: 20 }, // User
-            { wch: 15 }, // Category
-            { wch: 60 }  // Activity
-        ];
-        
-        XLSX.utils.book_append_sheet(wb, ws, 'Activity Logs');
-        
-        // Create summary sheet
-        const categoryCount = {};
-        logEntries.forEach(entry => {
-            const cat = entry.category || 'general';
-            categoryCount[cat] = (categoryCount[cat] || 0) + 1;
-        });
-        
-        const summaryData = [
-            { 'Metric': 'Total Entries', 'Value': logEntries.length },
-            { 'Metric': 'Export Date', 'Value': new Date().toLocaleString() },
-            { 'Metric': '', 'Value': '' },
-            { 'Metric': 'By Category', 'Value': '' },
-            ...Object.entries(categoryCount).map(([cat, count]) => ({
-                'Metric': `  ${cat}`,
-                'Value': count
-            }))
-        ];
-        
-        const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-        wsSummary['!cols'] = [{ wch: 25 }, { wch: 20 }];
-        XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
-        
-        // Generate filename
-        const filename = `ActivityLogs_${new Date().toISOString().split('T')[0]}.xlsx`;
-        
-        // Download file
-        XLSX.writeFile(wb, filename);
-        
-        showToast(`Downloaded ${logEntries.length} log entries`, "success");
-        addLog(`📥 Activity logs exported to Excel (${logEntries.length} entries)`, 'system');
-        
-    } catch (error) {
-        console.error('Error exporting logs to Excel:', error);
-        showToast("Export failed: " + error.message, "error");
+        logEntriesHtml += `
+            <tr style="background-color: ${bgColor};">
+                <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #64748b; white-space: nowrap;">${entry.date || '--'}</td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #0891b2; font-weight: 600; white-space: nowrap;">${entry.time || '--'}</td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+                    <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; background: ${catBgColor}; color: ${catColor}; font-weight: 500; text-transform: capitalize; font-size: 10px;">${cat}</span>
+                </td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #2563eb;">${entry.user || 'System'}</td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #1f2937;">${entry.text || ''}</td>
+            </tr>
+        `;
+    });
+    
+    // Create HTML content for PDF with professional styling
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Smart Home Activity Logs Report</title>
+            <style>
+                @media print {
+                    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    .page-break { page-break-before: always; }
+                }
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; background: #ffffff; color: #1f2937; line-height: 1.5; }
+                .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+                .header { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; }
+                .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+                .header-meta { display: flex; flex-wrap: wrap; gap: 20px; font-size: 13px; opacity: 0.9; }
+                .section { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+                .section-title { font-size: 18px; font-weight: 600; color: #0891b2; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; display: flex; align-items: center; gap: 8px; }
+                .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+                .stat-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0; }
+                .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+                .stat-value { font-size: 28px; font-weight: 700; }
+                .stat-value.cyan { color: #0891b2; }
+                .stat-value.blue { color: #2563eb; }
+                .stat-value.green { color: #059669; }
+                .stat-value.purple { color: #7c3aed; }
+                .category-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+                table { width: 100%; border-collapse: collapse; }
+                th { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: white; padding: 12px 10px; font-size: 11px; font-weight: 600; text-align: left; }
+                th:first-child { border-radius: 8px 0 0 0; }
+                th:last-child { border-radius: 0 8px 0 0; }
+                .footer { text-align: center; padding: 20px; color: #64748b; font-size: 11px; border-top: 1px solid #e5e7eb; margin-top: 30px; }
+                .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+                .badge-primary { background: rgba(255,255,255,0.2); color: white; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <!-- Header -->
+                <div class="header">
+                    <h1>📋 Activity Logs Report</h1>
+                    <div class="header-meta">
+                        <span>🏠 Smart Home Automation System</span>
+                        <span>📅 ${date}</span>
+                        <span>🕐 ${time}</span>
+                        <span class="badge badge-primary">📊 ${logEntries.length} Total Entries</span>
+                    </div>
+                </div>
+                
+                <!-- Statistics Summary -->
+                <div class="section">
+                    <div class="section-title">📈 Activity Summary</div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">📋 Total Logs</div>
+                            <div class="stat-value cyan">${logEntries.length}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">📅 Today's Activity</div>
+                            <div class="stat-value blue">${todayCount}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">🏷️ Categories</div>
+                            <div class="stat-value green">${Object.keys(categories).length}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">👥 Active Users</div>
+                            <div class="stat-value purple">${Object.keys(users).length}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Category Breakdown -->
+                <div class="section">
+                    <div class="section-title">🏷️ Activity by Category</div>
+                    <div class="category-grid">
+                        ${categoryStatsHtml || '<p style="text-align: center; color: #94a3b8;">No category data</p>'}
+                    </div>
+                </div>
+                
+                <!-- Activity Logs Table -->
+                <div class="section page-break">
+                    <div class="section-title">📝 Detailed Activity Logs</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 12%;">Date</th>
+                                <th style="width: 10%;">Time</th>
+                                <th style="width: 12%;">Category</th>
+                                <th style="width: 15%;">User</th>
+                                <th style="width: 51%;">Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${logEntriesHtml || '<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">No activity logs available</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Footer -->
+                <div class="footer">
+                    <p>Generated by Smart Home Automation System • InfiniSync v3.0</p>
+                    <p>© ${new Date().getFullYear()} All Rights Reserved</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    // Create a new window and print
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        showToast("Please allow popups to download PDF", "error");
+        return;
     }
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    // Wait for content to load then print
+    setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+        showToast("PDF export ready - use Print to PDF option", "success");
+    }, 800);
 }
 
 // Page Navigation
@@ -8396,10 +8642,6 @@ Timestamp: ${new Date().toLocaleString()}`;
         showToast("Logs cleared", "success");
     });
     
-    document.getElementById('export-logs-excel-btn').addEventListener('click', () => {
-        exportLogsToExcel();
-    });
-    
     document.getElementById('export-logs-btn').addEventListener('click', () => {
         const text = logEntries.map(e => `[${e.time}] ${e.user ? `[${e.user}]` : ''} ${e.text}`).join('\n');
         const blob = new Blob([text], { type: 'text/plain' });
@@ -8409,6 +8651,10 @@ Timestamp: ${new Date().toLocaleString()}`;
         a.download = `logs-${new Date().toISOString().split('T')[0]}.txt`;
         a.click();
         showToast("Logs exported as TXT", "success");
+    });
+    
+    document.getElementById('export-logs-pdf-btn').addEventListener('click', () => {
+        exportLogsToPDF();
     });
     
     // Fire Alarm History
